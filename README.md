@@ -80,20 +80,96 @@ and dates that just entered the window. Usage is tracked per calendar month in
 `data\usage.json` and shown in the dashboard header.
 
 To automate it, run `register-schedule.ps1` once — it creates a Windows
-Scheduled Task ("FareWatch daily sweep", 07:30 local by default).
+Scheduled Task ("FareWatch daily sweep", 07:30 local by default) that runs
+`run-daily.ps1`: sweep → render → alerts → publish to the website.
+
+## Trip planner ("get me there under $X")
+
+Tell Claude something like *"get me from ATL to MBJ Tuesday for under
+$150"* — or run it yourself:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\plan.ps1 -From ATL -To MBJ -Date 2026-07-21 -Budget 150
+```
+
+It prices the direct flight plus "airport hopping" self-connects through
+Frontier hubs (`hubs` in config.json), using the GoWild fare on any leg with
+pass seats and cash otherwise. Options: `-Hubs MCO,DEN` to limit the search,
+`-MinConnectMinutes 120`, `-NoOvernight`. **Each hop is a separate booking:**
+if leg 1 is late, leg 2 does not wait and owes you nothing — leave generous
+connections.
+
+## Search bar
+
+The dashboard now has a **Search a route** section: pick From/To (plus an
+optional date), and it lists every tracked departure for the pair, cheapest
+GoWild fare first, with per-date "live" deep links straight into Frontier's
+own booking search. It runs entirely in the browser, so it works on static
+hosting too. Each result has a **watch** button that generates the
+`watches.json` entry for that route.
+
+## Price-drop alerts (email or text) — GoWild fares only
+
+1. Copy `watches.example.json` to `watches.json` and edit. Each watch:
+   - `route`: `"MCO-PUJ"` or `"ANY"`
+   - `maxGw`: alert when the GoWild all-in total is at or under this dollar cap
+   - `dropPct`: alert when it is this % under the route's own trailing
+     average GoWild fare (kicks in once a route has 5+ observations)
+   - `to`: emails, and/or texts via carrier gateways —
+     `5551234567@vtext.com` (Verizon), `@txt.att.net` (AT&T),
+     `@tmomail.net` (T-Mobile)
+2. Put SMTP settings in `.env` (see `.env.example`). For Gmail, create an
+   **App Password** yourself at <https://myaccount.google.com/apppasswords>
+   — never put your real password in a file.
+3. Test without sending: `powershell -ExecutionPolicy Bypass -File .\alerts.ps1 -Test`
+
+Alerts run automatically after every real sweep. A ledger
+(`data\alerts-sent.json`) stops repeats unless the price drops further.
+Cash fares never trigger alerts — GoWild pass totals only.
+
+## Hosting it for everyone (free)
+
+The site is a static page, so **GitHub Pages** hosts it free. Your PC stays
+the engine: the scheduled task sweeps fares and pushes the fresh page.
+
+One-time setup (about 5 minutes, needs your GitHub account):
+
+1. Open **GitHub Desktop** → File → *Add local repository* →
+   `D:\CLAUDE\farewatch` → **Publish repository** (uncheck "Keep this code
+   private" if you want the world to see the code too; the site works either
+   way on a free account only if the repo is public).
+2. On github.com open the repo → **Settings → Pages** → Source: *Deploy from
+   a branch* → Branch: `master`, folder: `/docs` → Save.
+3. Your site appears at `https://YOURUSERNAME.github.io/farewatch/` about a
+   minute later, and every `run-daily.ps1` run updates it automatically.
+
+Privacy guardrails already in place: `.env` (passwords), `watches.json`
+(your email), and `data\` (raw history) are gitignored and never leave this
+machine — only the rendered page is published.
+
+**Honest limits of the free setup:** the public page is a snapshot that
+updates when your PC sweeps; visitors can browse and search it, and the
+watch button hands them a config snippet, but only watches configured on
+this machine actually send email/texts. Letting strangers subscribe
+themselves needs a small backend (e.g. Cloudflare Workers + a free email
+API) — a later upgrade if you want it.
 
 ## Files
 
 | File | Purpose |
 |---|---|
-| `config.json` | Routes, horizon, thresholds, budgets, provider choice |
-| `.env` | Your API keys (never commit; gitignored) |
-| `sweep.ps1` | Fetches fares, updates history, then renders |
-| `render.ps1` | Rebuilds `dashboard.html` from history (safe to run alone) |
-| `common.ps1` | Shared helpers |
-| `data\history.json` | Price observations per route-date |
-| `data\usage.json` | This month's API call count |
-| `dashboard.html` | The output — open it in any browser |
+| `config.json` | Routes, hubs, horizon, thresholds, budgets, provider choice |
+| `.env` | Keys + SMTP settings (never committed) |
+| `sweep.ps1` | Fetches fares, updates history, renders, fires alerts |
+| `render.ps1` | Rebuilds `dashboard.html` (incl. search bar) from history |
+| `plan.ps1` | Trip planner: cheapest routing A→B within budget |
+| `alerts.ps1` | GoWild price-drop email/text alerts (`-Test` to dry-run) |
+| `watches.json` | Your alert rules (gitignored) |
+| `publish.ps1` | Copies dashboard to `docs\index.html`, commits, pushes |
+| `run-daily.ps1` | sweep → publish; what the scheduled task runs |
+| `common.ps1` | Shared helpers incl. the flyfrontier.com fetcher |
+| `data\` | History, usage, alert ledger (gitignored) |
+| `docs\index.html` | The published site (GitHub Pages serves this) |
 
 ## How the signals work
 
