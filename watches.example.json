@@ -1,0 +1,15 @@
+{
+  "watches": [
+    {
+      "route": "MCO-PUJ",
+      "maxGw": 90,
+      "dropPct": 15,
+      "to": ["you@example.com"]
+    },
+    {
+      "route": "ANY",
+      "dropPct": 25,
+      "to": ["you@example.com", "5551234567@vtext.com"]
+    }
+  ]
+}
