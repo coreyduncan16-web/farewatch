@@ -186,7 +186,9 @@ today sits inside the range this route-date has actually traded in.</p>
     <button id="sGo">SEARCH</button>
     <a class="live" id="sLive" href="#" target="_blank" rel="noopener">check live on flyfrontier.com &rarr;</a>
   </div>
+  <div id="sQueueNote"></div>
   <div id="sLiveRes"></div>
+  <div id="sFlex"></div>
   <div id="sResults"></div>
 </section>
 <section id="alertsec">
@@ -200,6 +202,8 @@ today sits inside the range this route-date has actually traded in.</p>
       placeholder="MCO-PUJ" style="min-width:120px;text-transform:uppercase">
       <datalist id="routeList"><option value="ANY">ANY route</option><option value="ATL-CUN">ATL-CUN</option><option value="ATL-GUA">ATL-GUA</option><option value="ATL-LAS">ATL-LAS</option><option value="ATL-MBJ">ATL-MBJ</option><option value="ATL-PHL">ATL-PHL</option><option value="ATL-PHX">ATL-PHX</option><option value="ATL-PUJ">ATL-PUJ</option><option value="ATL-SDQ">ATL-SDQ</option><option value="ATL-SJO">ATL-SJO</option><option value="ATL-TPA">ATL-TPA</option><option value="DEN-CUN">DEN-CUN</option><option value="DEN-GUA">DEN-GUA</option><option value="DEN-LAS">DEN-LAS</option><option value="DEN-MBJ">DEN-MBJ</option><option value="DEN-PHL">DEN-PHL</option><option value="DEN-PHX">DEN-PHX</option><option value="DEN-PUJ">DEN-PUJ</option><option value="DEN-SDQ">DEN-SDQ</option><option value="DEN-SJO">DEN-SJO</option><option value="MCO-CUN">MCO-CUN</option><option value="MCO-GUA">MCO-GUA</option><option value="MCO-LAS">MCO-LAS</option><option value="MCO-MBJ">MCO-MBJ</option><option value="MCO-PUJ">MCO-PUJ</option><option value="MCO-SDQ">MCO-SDQ</option></datalist></label>
     <label>Alert at/under $<input type="number" id="wMax" value="90" min="20" max="500" style="min-width:84px"></label>
+    <label>Travel from<input type="date" id="wFrom"></label>
+    <label>Travel to<input type="date" id="wTo"></label>
     <button id="wGo">ALERT ME</button>
   </div>
   <p class="sub" id="wMsg"></p>
@@ -213,8 +217,8 @@ today sits inside the range this route-date has actually traded in.</p>
 <section>
   <h2>GoWild booking window</h2>
   <p class="sub">Per the pass terms, GoWild booking opens <strong>1 day before departure for domestic</strong> flights and <strong>10 days before for international</strong>. Prices and seat counts are read <strong>directly from flyfrontier.com</strong> at sweep time &mdash; all-in one-way totals ($0.01 fare + taxes and fees). A seat shown here can be gone by the time you book; rows marked proxy have not been swept yet. Top 16 of 49 in window.</p>
-  <table><thead><tr><th>Route</th><th>Departs</th><th class="hide-sm">Cash</th><th>GoWild</th><th>Pass seats</th><th>Basis</th><th></th></tr></thead><tbody>
-      <tr class="row" style="animation-delay:0ms">
+  <table id="gwtable"><thead><tr><th>Route</th><th>Departs</th><th class="hide-sm">Cash</th><th>GoWild</th><th>Pass seats</th><th>Basis</th><th></th></tr></thead><tbody>
+      <tr class="row" data-o="ATL" style="animation-delay:0ms">
         <td><div class="route">ATL <span>&rarr;</span> TPA</div>
             <span class="where hide-sm">Tampa</span></td>
         <td class="num">Jul 20
@@ -224,7 +228,7 @@ today sits inside the range this route-date has actually traded in.</p>
         <td><div class="score"><span class="pips"><i class="pip on"></i><i class="pip on"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span class="num">5/23</span></div></td>
         <td><div class="why">pass seats on 5 of 23 flights; includes a nonstop; 1d out &mdash; seats can still clear</div></td>
         <td><a class="bookbtn" target="_blank" rel="noopener" href="https://booking.flyfrontier.com/Flight/InternalSelect?s=true&o1=ATL&d1=TPA&dd1=Jul%2020%2C%202026&ADT=1&mon=true">BOOK &rarr;</a></td>
-      </tr>      <tr class="row" style="animation-delay:14ms">
+      </tr>      <tr class="row" data-o="ATL" style="animation-delay:14ms">
         <td><div class="route">ATL <span>&rarr;</span> LAS</div>
             <span class="where hide-sm">Las Vegas</span></td>
         <td class="num">Jul 20
@@ -234,7 +238,7 @@ today sits inside the range this route-date has actually traded in.</p>
         <td><div class="score"><span class="pips"><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip"></i><i class="pip"></i></span><span class="num">13/22</span></div></td>
         <td><div class="why">pass seats on 13 of 22 flights; includes a nonstop; 1d out &mdash; seats can still clear</div></td>
         <td><a class="bookbtn" target="_blank" rel="noopener" href="https://booking.flyfrontier.com/Flight/InternalSelect?s=true&o1=ATL&d1=LAS&dd1=Jul%2020%2C%202026&ADT=1&mon=true">BOOK &rarr;</a></td>
-      </tr>      <tr class="row" style="animation-delay:28ms">
+      </tr>      <tr class="row" data-o="ATL" style="animation-delay:28ms">
         <td><div class="route">ATL <span>&rarr;</span> PHX</div>
             <span class="where hide-sm">Phoenix</span></td>
         <td class="num">Jul 20
@@ -244,7 +248,7 @@ today sits inside the range this route-date has actually traded in.</p>
         <td><div class="score"><span class="pips"><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip"></i><i class="pip"></i></span><span class="num">11/21</span></div></td>
         <td><div class="why">pass seats on 11 of 21 flights; includes a nonstop; 1d out &mdash; seats can still clear</div></td>
         <td><a class="bookbtn" target="_blank" rel="noopener" href="https://booking.flyfrontier.com/Flight/InternalSelect?s=true&o1=ATL&d1=PHX&dd1=Jul%2020%2C%202026&ADT=1&mon=true">BOOK &rarr;</a></td>
-      </tr>      <tr class="row" style="animation-delay:42ms">
+      </tr>      <tr class="row" data-o="DEN" style="animation-delay:42ms">
         <td><div class="route">DEN <span>&rarr;</span> PHX</div>
             <span class="where hide-sm">Phoenix</span></td>
         <td class="num">Jul 20
@@ -254,7 +258,7 @@ today sits inside the range this route-date has actually traded in.</p>
         <td><div class="score"><span class="pips"><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip"></i><i class="pip"></i></span><span class="num">12/24</span></div></td>
         <td><div class="why">pass seats on 12 of 24 flights; includes a nonstop; 1d out &mdash; seats can still clear</div></td>
         <td><a class="bookbtn" target="_blank" rel="noopener" href="https://booking.flyfrontier.com/Flight/InternalSelect?s=true&o1=DEN&d1=PHX&dd1=Jul%2020%2C%202026&ADT=1&mon=true">BOOK &rarr;</a></td>
-      </tr>      <tr class="row" style="animation-delay:56ms">
+      </tr>      <tr class="row" data-o="DEN" style="animation-delay:56ms">
         <td><div class="route">DEN <span>&rarr;</span> PHL</div>
             <span class="where hide-sm">Philadelphia</span></td>
         <td class="num">Jul 20
@@ -264,7 +268,7 @@ today sits inside the range this route-date has actually traded in.</p>
         <td><div class="score"><span class="pips"><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip"></i><i class="pip"></i></span><span class="num">9/22</span></div></td>
         <td><div class="why">pass seats on 9 of 22 flights; includes a nonstop; 1d out &mdash; seats can still clear</div></td>
         <td><a class="bookbtn" target="_blank" rel="noopener" href="https://booking.flyfrontier.com/Flight/InternalSelect?s=true&o1=DEN&d1=PHL&dd1=Jul%2020%2C%202026&ADT=1&mon=true">BOOK &rarr;</a></td>
-      </tr>      <tr class="row" style="animation-delay:70ms">
+      </tr>      <tr class="row" data-o="DEN" style="animation-delay:70ms">
         <td><div class="route">DEN <span>&rarr;</span> LAS</div>
             <span class="where hide-sm">Las Vegas</span></td>
         <td class="num">Jul 20
@@ -274,7 +278,7 @@ today sits inside the range this route-date has actually traded in.</p>
         <td><div class="score"><span class="pips"><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip"></i><i class="pip"></i></span><span class="num">13/25</span></div></td>
         <td><div class="why">pass seats on 13 of 25 flights; includes a nonstop; 1d out &mdash; seats can still clear</div></td>
         <td><a class="bookbtn" target="_blank" rel="noopener" href="https://booking.flyfrontier.com/Flight/InternalSelect?s=true&o1=DEN&d1=LAS&dd1=Jul%2020%2C%202026&ADT=1&mon=true">BOOK &rarr;</a></td>
-      </tr>      <tr class="row" style="animation-delay:84ms">
+      </tr>      <tr class="row" data-o="MCO" style="animation-delay:84ms">
         <td><div class="route">MCO <span>&rarr;</span> LAS</div>
             <span class="where hide-sm">Las Vegas</span></td>
         <td class="num">Jul 20
@@ -284,7 +288,7 @@ today sits inside the range this route-date has actually traded in.</p>
         <td><div class="score"><span class="pips"><i class="pip on"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span class="num">3/22</span></div></td>
         <td><div class="why">pass seats on 3 of 22 flights; includes a nonstop; 1d out &mdash; seats can still clear</div></td>
         <td><a class="bookbtn" target="_blank" rel="noopener" href="https://booking.flyfrontier.com/Flight/InternalSelect?s=true&o1=MCO&d1=LAS&dd1=Jul%2020%2C%202026&ADT=1&mon=true">BOOK &rarr;</a></td>
-      </tr>      <tr class="row" style="animation-delay:98ms">
+      </tr>      <tr class="row" data-o="ATL" style="animation-delay:98ms">
         <td><div class="route">ATL <span>&rarr;</span> PHL</div>
             <span class="where hide-sm">Philadelphia</span></td>
         <td class="num">Jul 20
@@ -294,7 +298,7 @@ today sits inside the range this route-date has actually traded in.</p>
         <td><div class="score"><span class="pips"><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip"></i><i class="pip"></i></span><span class="num">14/24</span></div></td>
         <td><div class="why">pass seats on 14 of 24 flights; connections only; 1d out &mdash; seats can still clear</div></td>
         <td><a class="bookbtn" target="_blank" rel="noopener" href="https://booking.flyfrontier.com/Flight/InternalSelect?s=true&o1=ATL&d1=PHL&dd1=Jul%2020%2C%202026&ADT=1&mon=true">BOOK &rarr;</a></td>
-      </tr>      <tr class="row" style="animation-delay:112ms">
+      </tr>      <tr class="row" data-o="DEN" style="animation-delay:112ms">
         <td><div class="route">DEN <span>&rarr;</span> PHX</div>
             <span class="where hide-sm">Phoenix</span></td>
         <td class="num">Jul 19
@@ -304,7 +308,7 @@ today sits inside the range this route-date has actually traded in.</p>
         <td><div class="score"><span class="pips"><i class="pip on"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span class="num">1/7</span></div></td>
         <td><div class="why">pass seats on 1 of 7 flights; connections only; 0d out &mdash; seats can still clear</div></td>
         <td><a class="bookbtn" target="_blank" rel="noopener" href="https://booking.flyfrontier.com/Flight/InternalSelect?s=true&o1=DEN&d1=PHX&dd1=Jul%2019%2C%202026&ADT=1&mon=true">BOOK &rarr;</a></td>
-      </tr>      <tr class="row" style="animation-delay:126ms">
+      </tr>      <tr class="row" data-o="DEN" style="animation-delay:126ms">
         <td><div class="route">DEN <span>&rarr;</span> MBJ</div>
             <span class="where hide-sm">Montego Bay, Jamaica</span></td>
         <td class="num">Jul 20
@@ -314,7 +318,7 @@ today sits inside the range this route-date has actually traded in.</p>
         <td><div class="score"><span class="pips"><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i></span><span class="num">1/1</span></div></td>
         <td><div class="why">pass seats on 1 of 1 flights; 1d out &mdash; seats can still clear</div></td>
         <td><a class="bookbtn" target="_blank" rel="noopener" href="https://booking.flyfrontier.com/Flight/InternalSelect?s=true&o1=DEN&d1=MBJ&dd1=Jul%2020%2C%202026&ADT=1&mon=true">BOOK &rarr;</a></td>
-      </tr>      <tr class="row" style="animation-delay:140ms">
+      </tr>      <tr class="row" data-o="MCO" style="animation-delay:140ms">
         <td><div class="route">MCO <span>&rarr;</span> MBJ</div>
             <span class="where hide-sm">Montego Bay, Jamaica</span></td>
         <td class="num">Jul 21
@@ -324,7 +328,7 @@ today sits inside the range this route-date has actually traded in.</p>
         <td><div class="score"><span class="pips"><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i></span><span class="num">1/1</span></div></td>
         <td><div class="why">pass seats on 1 of 1 flights</div></td>
         <td><a class="bookbtn" target="_blank" rel="noopener" href="https://booking.flyfrontier.com/Flight/InternalSelect?s=true&o1=MCO&d1=MBJ&dd1=Jul%2021%2C%202026&ADT=1&mon=true">BOOK &rarr;</a></td>
-      </tr>      <tr class="row" style="animation-delay:154ms">
+      </tr>      <tr class="row" data-o="DEN" style="animation-delay:154ms">
         <td><div class="route">DEN <span>&rarr;</span> PUJ</div>
             <span class="where hide-sm">Punta Cana, Dominican Republic</span></td>
         <td class="num">Jul 20
@@ -334,7 +338,7 @@ today sits inside the range this route-date has actually traded in.</p>
         <td><div class="score"><span class="pips"><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip"></i><i class="pip"></i></span><span class="num">3/5</span></div></td>
         <td><div class="why">pass seats on 3 of 5 flights; connections only; 1d out &mdash; seats can still clear</div></td>
         <td><a class="bookbtn" target="_blank" rel="noopener" href="https://booking.flyfrontier.com/Flight/InternalSelect?s=true&o1=DEN&d1=PUJ&dd1=Jul%2020%2C%202026&ADT=1&mon=true">BOOK &rarr;</a></td>
-      </tr>      <tr class="row" style="animation-delay:168ms">
+      </tr>      <tr class="row" data-o="MCO" style="animation-delay:168ms">
         <td><div class="route">MCO <span>&rarr;</span> SDQ</div>
             <span class="where hide-sm">Santo Domingo, Dominican Republic</span></td>
         <td class="num">Jul 21
@@ -344,7 +348,7 @@ today sits inside the range this route-date has actually traded in.</p>
         <td><div class="score"><span class="pips"><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i></span><span class="num">3/3</span></div></td>
         <td><div class="why">pass seats on 3 of 3 flights</div></td>
         <td><a class="bookbtn" target="_blank" rel="noopener" href="https://booking.flyfrontier.com/Flight/InternalSelect?s=true&o1=MCO&d1=SDQ&dd1=Jul%2021%2C%202026&ADT=1&mon=true">BOOK &rarr;</a></td>
-      </tr>      <tr class="row" style="animation-delay:182ms">
+      </tr>      <tr class="row" data-o="MCO" style="animation-delay:182ms">
         <td><div class="route">MCO <span>&rarr;</span> PUJ</div>
             <span class="where hide-sm">Punta Cana, Dominican Republic</span></td>
         <td class="num">Jul 20
@@ -354,7 +358,7 @@ today sits inside the range this route-date has actually traded in.</p>
         <td><div class="score"><span class="pips"><i class="pip on"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span class="num">3/18</span></div></td>
         <td><div class="why">pass seats on 3 of 18 flights; connections only; 1d out &mdash; seats can still clear</div></td>
         <td><a class="bookbtn" target="_blank" rel="noopener" href="https://booking.flyfrontier.com/Flight/InternalSelect?s=true&o1=MCO&d1=PUJ&dd1=Jul%2020%2C%202026&ADT=1&mon=true">BOOK &rarr;</a></td>
-      </tr>      <tr class="row" style="animation-delay:196ms">
+      </tr>      <tr class="row" data-o="ATL" style="animation-delay:196ms">
         <td><div class="route">ATL <span>&rarr;</span> PUJ</div>
             <span class="where hide-sm">Punta Cana, Dominican Republic</span></td>
         <td class="num">Jul 20
@@ -364,7 +368,7 @@ today sits inside the range this route-date has actually traded in.</p>
         <td><div class="score"><span class="pips"><i class="pip on"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span class="num">2/12</span></div></td>
         <td><div class="why">pass seats on 2 of 12 flights; connections only; 1d out &mdash; seats can still clear</div></td>
         <td><a class="bookbtn" target="_blank" rel="noopener" href="https://booking.flyfrontier.com/Flight/InternalSelect?s=true&o1=ATL&d1=PUJ&dd1=Jul%2020%2C%202026&ADT=1&mon=true">BOOK &rarr;</a></td>
-      </tr>      <tr class="row" style="animation-delay:210ms">
+      </tr>      <tr class="row" data-o="MCO" style="animation-delay:210ms">
         <td><div class="route">MCO <span>&rarr;</span> PUJ</div>
             <span class="where hide-sm">Punta Cana, Dominican Republic</span></td>
         <td class="num">Jul 19
@@ -387,12 +391,12 @@ and seat assignments, which is where Frontier makes its money. Compare
 like for like before calling anything cheap.</p>
 </footer>
 <form name="watch" method="POST" action="/" netlify netlify-honeypot="bot-field" hidden>
-  <input name="email"><input name="route"><input name="maxprice"><input name="bot-field">
+  <input name="email"><input name="route"><input name="maxprice"><input name="datefrom"><input name="dateto"><input name="bot-field">
 </form>
 <form name="recheck" method="POST" action="/" netlify hidden>
   <input name="route"><input name="date">
 </form><script>
-var FW = [{"o":"ATL","sig":"LEARNING","fc":14,"cash":205,"g":121.33,"gc":1,"dep":"2026-07-29","d":"CUN"},{"o":"ATL","sig":"LEARNING","fc":4,"cash":658,"g":-1,"gc":0,"dep":"2026-07-20","d":"GUA"},{"o":"ATL","sig":"LEARNING","fc":4,"cash":239,"g":-1,"gc":0,"dep":"2026-07-29","d":"GUA"},{"o":"ATL","sig":"LEARNING","fc":22,"cash":234,"g":15.41,"gc":13,"dep":"2026-07-20","d":"LAS"},{"o":"ATL","sig":"LEARNING","fc":1,"cash":362,"g":-1,"gc":0,"dep":"2026-07-20","d":"MBJ"},{"o":"ATL","sig":"LEARNING","fc":1,"cash":330,"g":108.75,"gc":1,"dep":"2026-07-29","d":"MBJ"},{"o":"ATL","sig":"LEARNING","fc":24,"cash":180,"g":25.21,"gc":14,"dep":"2026-07-20","d":"PHL"},{"o":"ATL","sig":"LEARNING","fc":21,"cash":179,"g":15.41,"gc":11,"dep":"2026-07-20","d":"PHX"},{"o":"ATL","sig":"LEARNING","fc":12,"cash":278,"g":87.93,"gc":2,"dep":"2026-07-20","d":"PUJ"},{"o":"ATL","sig":"LEARNING","fc":11,"cash":258,"g":150.41,"gc":1,"dep":"2026-07-29","d":"PUJ"},{"o":"ATL","sig":"LEARNING","fc":3,"cash":493,"g":-1,"gc":0,"dep":"2026-07-20","d":"SDQ"},{"o":"ATL","sig":"LEARNING","fc":2,"cash":258,"g":-1,"gc":0,"dep":"2026-07-29","d":"SDQ"},{"o":"ATL","sig":"LEARNING","fc":3,"cash":247,"g":-1,"gc":0,"dep":"2026-07-29","d":"SJO"},{"o":"ATL","sig":"LEARNING","fc":23,"cash":205,"g":15.41,"gc":5,"dep":"2026-07-20","d":"TPA"},{"o":"ATL","sig":"LEARNING","fc":23,"cash":205,"g":15.41,"gc":14,"dep":"2026-07-21","d":"TPA"},{"o":"ATL","sig":"LEARNING","fc":23,"cash":205,"g":48.99,"gc":12,"dep":"2026-07-22","d":"TPA"},{"o":"ATL","sig":"LEARNING","fc":23,"cash":205,"g":68.99,"gc":11,"dep":"2026-07-23","d":"TPA"},{"o":"ATL","sig":"LEARNING","fc":23,"cash":205,"g":88.99,"gc":7,"dep":"2026-07-24","d":"TPA"},{"o":"ATL","sig":"LEARNING","fc":23,"cash":205,"g":68.99,"gc":9,"dep":"2026-07-25","d":"TPA"},{"o":"ATL","sig":"LEARNING","fc":23,"cash":95,"g":177.98,"gc":2,"dep":"2026-07-26","d":"TPA"},{"o":"ATL","sig":"LEARNING","fc":23,"cash":64,"g":68.99,"gc":13,"dep":"2026-07-27","d":"TPA"},{"o":"ATL","sig":"LEARNING","fc":23,"cash":64,"g":48.99,"gc":16,"dep":"2026-07-28","d":"TPA"},{"o":"ATL","sig":"LEARNING","fc":23,"cash":64,"g":48.99,"gc":15,"dep":"2026-07-29","d":"TPA"},{"o":"DEN","sig":"LEARNING","fc":3,"cash":520,"g":-1,"gc":0,"dep":"2026-07-19","d":"CUN"},{"o":"DEN","sig":"LEARNING","fc":10,"cash":305,"g":94.59,"gc":4,"dep":"2026-07-20","d":"CUN"},{"o":"DEN","sig":"LEARNING","fc":8,"cash":120,"g":121.33,"gc":1,"dep":"2026-07-29","d":"CUN"},{"o":"DEN","sig":"LEARNING","fc":1,"cash":667,"g":-1,"gc":0,"dep":"2026-07-19","d":"GUA"},{"o":"DEN","sig":"LEARNING","fc":2,"cash":667,"g":-1,"gc":0,"dep":"2026-07-20","d":"GUA"},{"o":"DEN","sig":"LEARNING","fc":2,"cash":248,"g":-1,"gc":0,"dep":"2026-07-29","d":"GUA"},{"o":"DEN","sig":"LEARNING","fc":1,"cash":460,"g":-1,"gc":0,"dep":"2026-07-19","d":"LAS"},{"o":"DEN","sig":"LEARNING","fc":25,"cash":231,"g":15.41,"gc":13,"dep":"2026-07-20","d":"LAS"},{"o":"DEN","sig":"LEARNING","fc":1,"cash":442,"g":82.01,"gc":1,"dep":"2026-07-20","d":"MBJ"},{"o":"DEN","sig":"LEARNING","fc":1,"cash":527,"g":-1,"gc":0,"dep":"2026-07-21","d":"MBJ"},{"o":"DEN","sig":"LEARNING","fc":1,"cash":377,"g":-1,"gc":0,"dep":"2026-07-29","d":"MBJ"},{"o":"DEN","sig":"LEARNING","fc":3,"cash":264,"g":-1,"gc":0,"dep":"2026-07-19","d":"PHL"},{"o":"DEN","sig":"LEARNING","fc":22,"cash":189,"g":15.41,"gc":9,"dep":"2026-07-20","d":"PHL"},{"o":"DEN","sig":"LEARNING","fc":7,"cash":168,"g":30.81,"gc":1,"dep":"2026-07-19","d":"PHX"},{"o":"DEN","sig":"LEARNING","fc":24,"cash":161,"g":15.41,"gc":12,"dep":"2026-07-20","d":"PHX"},{"o":"DEN","sig":"LEARNING","fc":5,"cash":318,"g":87.93,"gc":3,"dep":"2026-07-20","d":"PUJ"},{"o":"DEN","sig":"LEARNING","fc":4,"cash":309,"g":-1,"gc":0,"dep":"2026-07-29","d":"PUJ"},{"o":"DEN","sig":"LEARNING","fc":2,"cash":318,"g":87.93,"gc":1,"dep":"2026-07-20","d":"SDQ"},{"o":"DEN","sig":"LEARNING","fc":1,"cash":298,"g":-1,"gc":0,"dep":"2026-07-29","d":"SDQ"},{"o":"DEN","sig":"LEARNING","fc":2,"cash":267,"g":-1,"gc":0,"dep":"2026-07-29","d":"SJO"},{"o":"MCO","sig":"LEARNING","fc":2,"cash":524,"g":94.59,"gc":1,"dep":"2026-07-19","d":"CUN"},{"o":"MCO","sig":"LEARNING","fc":13,"cash":524,"g":94.59,"gc":1,"dep":"2026-07-20","d":"CUN"},{"o":"MCO","sig":"LEARNING","fc":14,"cash":359,"g":157.07,"gc":2,"dep":"2026-07-29","d":"CUN"},{"o":"MCO","sig":"LEARNING","fc":1,"cash":250,"g":-1,"gc":0,"dep":"2026-07-20","d":"GUA"},{"o":"MCO","sig":"LEARNING","fc":1,"cash":218,"g":-1,"gc":0,"dep":"2026-07-29","d":"GUA"},{"o":"MCO","sig":"LEARNING","fc":22,"cash":284,"g":15.41,"gc":3,"dep":"2026-07-20","d":"LAS"},{"o":"MCO","sig":"LEARNING","fc":1,"cash":491,"g":82.01,"gc":1,"dep":"2026-07-21","d":"MBJ"},{"o":"MCO","sig":"LEARNING","fc":1,"cash":346,"g":144.49,"gc":1,"dep":"2026-07-29","d":"MBJ"},{"o":"MCO","sig":"LEARNING","fc":4,"cash":258,"g":87.93,"gc":1,"dep":"2026-07-19","d":"PUJ"},{"o":"MCO","sig":"LEARNING","fc":18,"cash":258,"g":87.93,"gc":3,"dep":"2026-07-20","d":"PUJ"},{"o":"MCO","sig":"LEARNING","fc":15,"cash":258,"g":87.93,"gc":8,"dep":"2026-07-21","d":"PUJ"},{"o":"MCO","sig":"LEARNING","fc":17,"cash":238,"g":-1,"gc":0,"dep":"2026-07-29","d":"PUJ"},{"o":"MCO","sig":"LEARNING","fc":3,"cash":473,"g":-1,"gc":0,"dep":"2026-07-20","d":"SDQ"},{"o":"MCO","sig":"LEARNING","fc":3,"cash":258,"g":87.93,"gc":3,"dep":"2026-07-21","d":"SDQ"},{"o":"MCO","sig":"LEARNING","fc":3,"cash":238,"g":-1,"gc":0,"dep":"2026-07-29","d":"SDQ"}];
+var FW = [{"u":"2026-07-19","o":"ATL","d":"CUN","g":121.33,"sig":"LEARNING","cash":205,"gc":1,"fc":14,"dep":"2026-07-29"},{"u":"2026-07-19","o":"ATL","d":"GUA","g":-1,"sig":"LEARNING","cash":658,"gc":0,"fc":4,"dep":"2026-07-20"},{"u":"2026-07-19","o":"ATL","d":"GUA","g":-1,"sig":"LEARNING","cash":239,"gc":0,"fc":4,"dep":"2026-07-29"},{"u":"2026-07-19","o":"ATL","d":"LAS","g":15.41,"sig":"LEARNING","cash":234,"gc":13,"fc":22,"dep":"2026-07-20"},{"u":"2026-07-19","o":"ATL","d":"MBJ","g":-1,"sig":"LEARNING","cash":362,"gc":0,"fc":1,"dep":"2026-07-20"},{"u":"2026-07-19","o":"ATL","d":"MBJ","g":108.75,"sig":"LEARNING","cash":330,"gc":1,"fc":1,"dep":"2026-07-29"},{"u":"2026-07-19","o":"ATL","d":"PHL","g":25.21,"sig":"LEARNING","cash":180,"gc":14,"fc":24,"dep":"2026-07-20"},{"u":"2026-07-19","o":"ATL","d":"PHX","g":15.41,"sig":"LEARNING","cash":179,"gc":11,"fc":21,"dep":"2026-07-20"},{"u":"2026-07-19","o":"ATL","d":"PUJ","g":87.93,"sig":"LEARNING","cash":278,"gc":2,"fc":12,"dep":"2026-07-20"},{"u":"2026-07-19","o":"ATL","d":"PUJ","g":150.41,"sig":"LEARNING","cash":258,"gc":1,"fc":11,"dep":"2026-07-29"},{"u":"2026-07-19","o":"ATL","d":"SDQ","g":-1,"sig":"LEARNING","cash":493,"gc":0,"fc":3,"dep":"2026-07-20"},{"u":"2026-07-19","o":"ATL","d":"SDQ","g":-1,"sig":"LEARNING","cash":258,"gc":0,"fc":2,"dep":"2026-07-29"},{"u":"2026-07-19","o":"ATL","d":"SJO","g":-1,"sig":"LEARNING","cash":247,"gc":0,"fc":3,"dep":"2026-07-29"},{"u":"2026-07-19","o":"ATL","d":"TPA","g":15.41,"sig":"LEARNING","cash":205,"gc":5,"fc":23,"dep":"2026-07-20"},{"u":"2026-07-19","o":"ATL","d":"TPA","g":15.41,"sig":"LEARNING","cash":205,"gc":14,"fc":23,"dep":"2026-07-21"},{"u":"2026-07-19","o":"ATL","d":"TPA","g":48.99,"sig":"LEARNING","cash":205,"gc":12,"fc":23,"dep":"2026-07-22"},{"u":"2026-07-19","o":"ATL","d":"TPA","g":68.99,"sig":"LEARNING","cash":205,"gc":11,"fc":23,"dep":"2026-07-23"},{"u":"2026-07-19","o":"ATL","d":"TPA","g":88.99,"sig":"LEARNING","cash":205,"gc":7,"fc":23,"dep":"2026-07-24"},{"u":"2026-07-19","o":"ATL","d":"TPA","g":68.99,"sig":"LEARNING","cash":205,"gc":9,"fc":23,"dep":"2026-07-25"},{"u":"2026-07-19","o":"ATL","d":"TPA","g":177.98,"sig":"LEARNING","cash":95,"gc":2,"fc":23,"dep":"2026-07-26"},{"u":"2026-07-19","o":"ATL","d":"TPA","g":68.99,"sig":"LEARNING","cash":64,"gc":13,"fc":23,"dep":"2026-07-27"},{"u":"2026-07-19","o":"ATL","d":"TPA","g":48.99,"sig":"LEARNING","cash":64,"gc":16,"fc":23,"dep":"2026-07-28"},{"u":"2026-07-19","o":"ATL","d":"TPA","g":48.99,"sig":"LEARNING","cash":64,"gc":15,"fc":23,"dep":"2026-07-29"},{"u":"2026-07-19","o":"DEN","d":"CUN","g":-1,"sig":"LEARNING","cash":520,"gc":0,"fc":3,"dep":"2026-07-19"},{"u":"2026-07-19","o":"DEN","d":"CUN","g":94.59,"sig":"LEARNING","cash":305,"gc":4,"fc":10,"dep":"2026-07-20"},{"u":"2026-07-19","o":"DEN","d":"CUN","g":121.33,"sig":"LEARNING","cash":120,"gc":1,"fc":8,"dep":"2026-07-29"},{"u":"2026-07-19","o":"DEN","d":"GUA","g":-1,"sig":"LEARNING","cash":667,"gc":0,"fc":1,"dep":"2026-07-19"},{"u":"2026-07-19","o":"DEN","d":"GUA","g":-1,"sig":"LEARNING","cash":667,"gc":0,"fc":2,"dep":"2026-07-20"},{"u":"2026-07-19","o":"DEN","d":"GUA","g":-1,"sig":"LEARNING","cash":248,"gc":0,"fc":2,"dep":"2026-07-29"},{"u":"2026-07-19","o":"DEN","d":"LAS","g":-1,"sig":"LEARNING","cash":460,"gc":0,"fc":1,"dep":"2026-07-19"},{"u":"2026-07-19","o":"DEN","d":"LAS","g":15.41,"sig":"LEARNING","cash":231,"gc":13,"fc":25,"dep":"2026-07-20"},{"u":"2026-07-19","o":"DEN","d":"MBJ","g":82.01,"sig":"LEARNING","cash":442,"gc":1,"fc":1,"dep":"2026-07-20"},{"u":"2026-07-19","o":"DEN","d":"MBJ","g":-1,"sig":"LEARNING","cash":527,"gc":0,"fc":1,"dep":"2026-07-21"},{"u":"2026-07-19","o":"DEN","d":"MBJ","g":-1,"sig":"LEARNING","cash":377,"gc":0,"fc":1,"dep":"2026-07-29"},{"u":"2026-07-19","o":"DEN","d":"PHL","g":-1,"sig":"LEARNING","cash":264,"gc":0,"fc":3,"dep":"2026-07-19"},{"u":"2026-07-19","o":"DEN","d":"PHL","g":15.41,"sig":"LEARNING","cash":189,"gc":9,"fc":22,"dep":"2026-07-20"},{"u":"2026-07-19","o":"DEN","d":"PHX","g":30.81,"sig":"LEARNING","cash":168,"gc":1,"fc":7,"dep":"2026-07-19"},{"u":"2026-07-19","o":"DEN","d":"PHX","g":15.41,"sig":"LEARNING","cash":161,"gc":12,"fc":24,"dep":"2026-07-20"},{"u":"2026-07-19","o":"DEN","d":"PUJ","g":87.93,"sig":"LEARNING","cash":318,"gc":3,"fc":5,"dep":"2026-07-20"},{"u":"2026-07-19","o":"DEN","d":"PUJ","g":-1,"sig":"LEARNING","cash":309,"gc":0,"fc":4,"dep":"2026-07-29"},{"u":"2026-07-19","o":"DEN","d":"SDQ","g":87.93,"sig":"LEARNING","cash":318,"gc":1,"fc":2,"dep":"2026-07-20"},{"u":"2026-07-19","o":"DEN","d":"SDQ","g":-1,"sig":"LEARNING","cash":298,"gc":0,"fc":1,"dep":"2026-07-29"},{"u":"2026-07-19","o":"DEN","d":"SJO","g":-1,"sig":"LEARNING","cash":267,"gc":0,"fc":2,"dep":"2026-07-29"},{"u":"2026-07-19","o":"MCO","d":"CUN","g":94.59,"sig":"LEARNING","cash":524,"gc":1,"fc":2,"dep":"2026-07-19"},{"u":"2026-07-19","o":"MCO","d":"CUN","g":94.59,"sig":"LEARNING","cash":524,"gc":1,"fc":13,"dep":"2026-07-20"},{"u":"2026-07-19","o":"MCO","d":"CUN","g":157.07,"sig":"LEARNING","cash":359,"gc":2,"fc":14,"dep":"2026-07-29"},{"u":"2026-07-19","o":"MCO","d":"GUA","g":-1,"sig":"LEARNING","cash":250,"gc":0,"fc":1,"dep":"2026-07-20"},{"u":"2026-07-19","o":"MCO","d":"GUA","g":-1,"sig":"LEARNING","cash":218,"gc":0,"fc":1,"dep":"2026-07-29"},{"u":"2026-07-19","o":"MCO","d":"LAS","g":15.41,"sig":"LEARNING","cash":284,"gc":3,"fc":22,"dep":"2026-07-20"},{"u":"2026-07-19","o":"MCO","d":"MBJ","g":82.01,"sig":"LEARNING","cash":491,"gc":1,"fc":1,"dep":"2026-07-21"},{"u":"2026-07-19","o":"MCO","d":"MBJ","g":144.49,"sig":"LEARNING","cash":346,"gc":1,"fc":1,"dep":"2026-07-29"},{"u":"2026-07-19","o":"MCO","d":"PUJ","g":87.93,"sig":"LEARNING","cash":258,"gc":1,"fc":4,"dep":"2026-07-19"},{"u":"2026-07-19","o":"MCO","d":"PUJ","g":87.93,"sig":"LEARNING","cash":258,"gc":3,"fc":18,"dep":"2026-07-20"},{"u":"2026-07-19","o":"MCO","d":"PUJ","g":87.93,"sig":"LEARNING","cash":258,"gc":8,"fc":15,"dep":"2026-07-21"},{"u":"2026-07-19","o":"MCO","d":"PUJ","g":-1,"sig":"LEARNING","cash":238,"gc":0,"fc":17,"dep":"2026-07-29"},{"u":"2026-07-19","o":"MCO","d":"SDQ","g":-1,"sig":"LEARNING","cash":473,"gc":0,"fc":3,"dep":"2026-07-20"},{"u":"2026-07-19","o":"MCO","d":"SDQ","g":87.93,"sig":"LEARNING","cash":258,"gc":3,"fc":3,"dep":"2026-07-21"},{"u":"2026-07-19","o":"MCO","d":"SDQ","g":-1,"sig":"LEARNING","cash":238,"gc":0,"fc":3,"dep":"2026-07-29"}];
 var FWFORM = {"routeEntry":"","emailEntry":"","priceEntry":"","fallback":"coreyduncan16@gmail.com","action":""};
 var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function el(i){ return document.getElementById(i); }
@@ -419,8 +423,10 @@ function submitWatch(){
   var em = el('wEmail').value.trim();
   var rt = el('wRoute').value.trim().toUpperCase();
   var mx = el('wMax').value;
+  var df = el('wFrom').value, dt = el('wTo').value;
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { el('wMsg').textContent = 'Please enter a valid email address.'; return; }
   if (!/^([A-Z]{3}-[A-Z]{3}|ANY)$/.test(rt)) { el('wMsg').textContent = 'Route must look like MCO-PUJ (airport codes), or ANY.'; return; }
+  if (df && dt && df > dt) { el('wMsg').textContent = 'Travel-from date is after travel-to date.'; return; }
   if (FWFORM.action) {
     var fd = new FormData();
     fd.append(FWFORM.emailEntry, em);
@@ -430,9 +436,11 @@ function submitWatch(){
     el('wMsg').textContent = 'You are on the list! ' + rt + ' will be checked hourly; one email lands when the GoWild total is $' + mx + ' or less.';
     el('wEmail').value = '';
   } else if (location.protocol !== 'file:') {
-    var params = 'form-name=watch&email=' + encodeURIComponent(em) + '&route=' + encodeURIComponent(rt) + '&maxprice=' + encodeURIComponent(mx);
+    var params = 'form-name=watch&email=' + encodeURIComponent(em) + '&route=' + encodeURIComponent(rt) + '&maxprice=' + encodeURIComponent(mx)
+      + '&datefrom=' + encodeURIComponent(df) + '&dateto=' + encodeURIComponent(dt);
+    var range = (df || dt) ? (' for travel ' + (df || 'now') + ' to ' + (dt || 'anytime')) : '';
     fetch('/', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params })
-      .then(function(){ el('wMsg').textContent = 'You are on the list! ' + rt + ' will be checked hourly; one email lands when the GoWild total is $' + mx + ' or less.'; el('wEmail').value = ''; })
+      .then(function(){ el('wMsg').textContent = 'You are on the list! ' + rt + range + ' - checked hourly; one email lands when the GoWild total is $' + mx + ' or less.'; el('wEmail').value = ''; })
       .catch(function(){ el('wMsg').textContent = 'Signup hiccup - try again in a minute.'; });
   } else {
     el('wMsg').textContent = 'Opening your email app - just hit send and you will be added.';
@@ -441,12 +449,79 @@ function submitWatch(){
       + '&body=' + encodeURIComponent('Please add me to FareWatch price alerts.\nEmail: ' + em + '\nRoute: ' + rt + '\nAlert at or under: $' + mx);
   }
 }
-function requestRecheck(o, d, ds){
-  var scope = ds ? ds : 'the next 10 days';
+// Auto-queue a fresh sweep for every search whose data is not from today.
+// Throttled per route per browser (6h) so casual clicking cannot flood the queue.
+function autoQueue(o, d, ds, pair){
+  if (location.protocol === 'file:') { return; }
+  var today = isoDate(new Date());
+  var fresh = pair.some(function(r){ return r.u === today && (!ds || r.dep === ds); });
+  if (fresh) { el('sQueueNote').innerHTML = ''; return; }
+  var key = 'fwq_' + o + d;
+  try {
+    var last = +localStorage.getItem(key) || 0;
+    if (Date.now() - last < 6 * 3600 * 1000) {
+      el('sQueueNote').innerHTML = '<p class="sub">Fresh sweep for ' + o + ' &rarr; ' + d + ' is already queued &mdash; prices update within the hour.</p>';
+      return;
+    }
+    localStorage.setItem(key, String(Date.now()));
+  } catch (e) { }
   var params = 'form-name=recheck&route=' + encodeURIComponent(o + '-' + d) + '&date=' + encodeURIComponent(ds || '');
   fetch('/', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params })
-    .then(function(){ el('sLiveRes').innerHTML = '<div class="empty">Queued! ' + o + ' &rarr; ' + d + ' (' + scope + ') gets swept within the hour &mdash; check back, or grab it right now with the flyfrontier.com link above.</div>'; })
-    .catch(function(){ el('sLiveRes').innerHTML = '<div class="empty">Could not queue the check - use the flyfrontier.com link above.</div>'; });
+    .then(function(){ el('sQueueNote').innerHTML = '<p class="sub">&#10003; Fresh sweep queued for ' + o + ' &rarr; ' + d + (ds ? ' on ' + ds : ' (next 10 days)') + ' &mdash; prices here update within the hour.</p>'; })
+    .catch(function(){ });
+}
+
+// Flexible dates: rank the next 10 days of this route from local lows to
+// local highs. Uses real GoWild fares where the booking window is open,
+// otherwise soft-cash as the forecast (soft cash = pass seats usually clear).
+function flexPanel(o, d, pair){
+  var todayIso = isoDate(new Date());
+  var limIso = isoDate(new Date(Date.now() + 10 * 864e5));
+  var days = pair.filter(function(r){ return r.dep >= todayIso && r.dep <= limIso; });
+  days.sort(function(a, b){ return a.dep < b.dep ? -1 : 1; });
+  var withGw = days.filter(function(r){ return r.gc > 0 && r.g > 0; });
+  var basis = withGw.length >= 2 ? 'gw' : 'cash';
+  var vals = [];
+  days.forEach(function(r){
+    r._v = basis === 'gw' ? ((r.gc > 0 && r.g > 0) ? r.g : null) : (r.cash > 0 ? r.cash : null);
+    if (r._v !== null) { vals.push(r._v); }
+  });
+  if (vals.length < 2) { el('sFlex').innerHTML = ''; return; }
+  var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+  var best = null;
+  days.forEach(function(r){ if (r._v !== null && (best === null || r._v < best._v)) { best = r; } });
+  var h = '<p class="sub"><strong>Flexible dates?</strong> Next 10 days of ' + o + ' &rarr; ' + d + ', ranked against this route&rsquo;s own local high/low'
+    + (basis === 'cash' ? ' <em>(forecast from cash-fare softness &mdash; domestic GoWild only opens 1 day out)</em>' : '') + ':</p>';
+  h += '<table><thead><tr><th>Date</th><th>' + (basis === 'gw' ? 'GoWild' : 'Cash') + '</th><th>Vs. local range</th><th></th></tr></thead><tbody>';
+  days.forEach(function(r){
+    var verdict = '<span class="delta">no data yet</span>';
+    if (r._v !== null) {
+      var pos = hi > lo ? (r._v - lo) / (hi - lo) : 0;
+      var word, cls;
+      if (pos <= 0.2) { word = 'LOW'; cls = 'BUY'; }
+      else if (pos <= 0.45) { word = 'GOOD'; cls = 'WATCH'; }
+      else if (pos <= 0.7) { word = 'MID'; cls = 'HOLD'; }
+      else { word = 'HIGH'; cls = 'SPIKE'; }
+      verdict = '<span class="sig ' + cls + '">' + word + '</span>';
+      if (best && r.dep === best.dep) { verdict += ' <span class="sig BUY">&#9733; BEST BET</span>'; }
+    }
+    h += '<tr class="row"><td class="num">' + r.dep + '</td>'
+      + '<td class="num">' + (r._v !== null ? money(r._v) : '&mdash;') + '</td>'
+      + '<td>' + verdict + '</td>'
+      + '<td><a class="rowbtn" target="_blank" rel="noopener" href="' + liveUrl(o, d, r.dep) + '">live</a></td></tr>';
+  });
+  h += '</tbody></table>';
+  el('sFlex').innerHTML = h;
+}
+
+// Float the searched departure airport to the top of the GoWild window table.
+function floatGwOrigin(o){
+  var tb = document.querySelector('#gwtable tbody');
+  if (!tb) { return; }
+  var rows = Array.prototype.slice.call(tb.rows);
+  var mine = rows.filter(function(r){ return r.getAttribute('data-o') === o; });
+  var rest = rows.filter(function(r){ return r.getAttribute('data-o') !== o; });
+  mine.concat(rest).forEach(function(r){ tb.appendChild(r); });
 }
 function cachedRowsHtml(rows){
   var h = '<table><thead><tr><th>Route</th><th>Departs</th><th class="hide-sm">Cash</th><th>GoWild</th><th>Pass seats</th><th></th></tr></thead><tbody>';
@@ -467,6 +542,9 @@ function doSearch(){
   var o = el('sFrom').value, d = el('sTo').value, ds = el('sDate').value, gwOnly = el('sGw').checked;
   liveFetch(o, d, ds);
   var pair = FW.filter(function(r){ return r.o === o && r.d === d && (!gwOnly || r.gc > 0); });
+  autoQueue(o, d, ds, pair);
+  flexPanel(o, d, pair);
+  floatGwOrigin(o);
   var rows = pair.filter(function(r){ return !ds || r.dep === ds; });
   rows.sort(function(a, b){
     var ag = a.gc > 0 ? a.g : 1e9, bg = b.gc > 0 ? b.g : 1e9;
@@ -488,9 +566,8 @@ function doSearch(){
       h += '<p class="sub">Nothing tracked for ' + o + ' &rarr; ' + d + (ds ? ' on ' + ds : '') + ' &mdash; here is the same route over the <strong>next 10 days</strong> instead:</p>' + cachedRowsHtml(sugg);
     } else {
       h += '<div class="empty">No swept data for ' + o + ' &rarr; ' + d + ' yet'
-        + (gwOnly ? ' with pass seats (try unchecking the box)' : '') + '. '
-        + '<button class="rowbtn" onclick="requestRecheck(\'' + o + '\',\'' + d + '\',\'\')">SCAN NEXT 10 DAYS</button>'
-        + ' queues a full sweep of this route (done within the hour) &mdash; or open it live with the flyfrontier.com link above.</div>';
+        + (gwOnly ? ' with pass seats (try unchecking the box)' : '')
+        + '. A fresh sweep of the next 10 days was queued automatically &mdash; check back within the hour, or open it live with the flyfrontier.com link above.</div>';
     }
   }
   el('sResults').innerHTML = h;
@@ -514,14 +591,11 @@ function liveFetch(o, d, ds){
     });
     var blocked = results.some(function(res){ return res.j && res.j.blocked; });
     if (failed || (blocked && !rows.length)) {
-      el('sLiveRes').innerHTML = '<div class="empty">Frontier blocks instant checks from cloud servers, so live data comes from the tracker&rsquo;s hourly sweeps instead. Want this exact route re-checked soon? '
-        + '<button class="rowbtn" onclick="requestRecheck(\'' + o + '\',\'' + d + '\',\'' + (ds || '') + '\')">REQUEST FRESH CHECK</button>'
-        + ' &mdash; or see it right now on the flyfrontier.com link above.</div>';
+      el('sLiveRes').innerHTML = '';
       return;
     }
     if (!rows.length) {
-      el('sLiveRes').innerHTML = '<p class="sub"><strong>LIVE</strong> &mdash; checked seconds ago:</p><div class="empty">No ' + o + ' &rarr; ' + d + ' flights on ' + dates.join(' or ') + ' &mdash; see other days for this route below, or '
-        + '<button class="rowbtn" onclick="requestRecheck(\'' + o + '\',\'' + d + '\',\'\')">SCAN NEXT 10 DAYS</button>.</div>';
+      el('sLiveRes').innerHTML = '<p class="sub"><strong>LIVE</strong> &mdash; checked seconds ago: no ' + o + ' &rarr; ' + d + ' flights on ' + dates.join(' or ') + ' &mdash; see other days for this route below.</p>';
       return;
     }
     rows.sort(function(a, b){
