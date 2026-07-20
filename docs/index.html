@@ -133,6 +133,13 @@ tr.row{opacity:0;animation:in .34s ease forwards}
   padding:3px 8px;border:1px solid var(--rule);background:var(--panel);
   color:var(--dim);cursor:pointer;text-decoration:none;display:inline-block}
 .rowbtn:hover{border-color:var(--buy);color:var(--buy)}
+.bookbtn{font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;
+  letter-spacing:.09em;padding:7px 14px;border:1px solid var(--buy);
+  background:var(--buy);color:#fff;text-decoration:none;display:inline-block;
+  white-space:nowrap}
+.bookbtn:hover{opacity:.88}
+.bookbtn.dim{background:var(--panel);color:var(--dim);border-color:var(--rule)}
+.bookbtn.dim:hover{color:var(--buy);border-color:var(--buy);opacity:1}
 footer{margin-top:40px;padding-top:16px;border-top:1px solid var(--rule);
   font-size:12px;color:var(--dim);max-width:74ch}
 footer b{color:var(--ink);font-weight:600}
@@ -144,7 +151,7 @@ a{color:var(--buy)}
 </style></head>
 <body><div class="wrap">
 <header>
-  <h1>farewatch<em>/frontier</em></h1>  <div class="swept">swept 19 Jul 19:19 UTC<br>source: frontier &middot; 15 route-dates</div>
+  <h1>farewatch<em>/frontier</em></h1>  <div class="swept">swept 20 Jul 00:46 UTC<br>source: frontier &middot; 16 route-dates</div>
 </header>
 <p class="lede">Every price is judged against its own history on that exact
 route and departure date, not against other routes. Percentile is where
@@ -154,8 +161,8 @@ today sits inside the range this route-date has actually traded in.</p>
   <div class="tally watch"><b>0</b> watch</div>
   <div class="tally"><b>0</b> hold</div>
   <div class="tally"><b>0</b> spiked</div>
-  <div class="tally"><b>15</b> learning</div>
-  <div class="budget">api 30/3720 <span class="meter"><i class="" style="width:1%"></i></span></div>
+  <div class="tally"><b>16</b> learning</div>
+  <div class="budget">api 52/3720 <span class="meter"><i class="" style="width:1%"></i></span></div>
 </div>
 
 <section id="searchsec">
@@ -164,8 +171,8 @@ today sits inside the range this route-date has actually traded in.</p>
   first. Data is as of the last sweep &mdash; always confirm with the live
   link before booking.</p>
   <div class="searchbar">
-    <label>From<select id="sFrom"><option value="ATL">ATL - Atlanta</option><option value="DEN">DEN - Denver</option><option value="MCO">MCO - Orlando</option></select></label>
-    <label>To<select id="sTo"><option value="GUA">GUA - Guatemala City</option><option value="MBJ">MBJ - Montego Bay</option><option value="PUJ">PUJ - Punta Cana</option><option value="SDQ">SDQ - Santo Domingo</option><option value="SJO">SJO - San José</option></select></label>
+    <label>From<select id="sFrom"><option value="BQN">BQN - Aguadilla</option><option value="AGU">AGU - Aguascalientes</option><option value="ATL" selected>ATL - Atlanta, GA</option><option value="AUS">AUS - Austin, TX</option><option value="BWI">BWI - Baltimore, MD</option><option value="XNA">XNA - Bentonville/Fayetteville, AR</option><option value="BOI">BOI - Boise, ID</option><option value="BOS">BOS - Boston, MA</option><option value="BUF">BUF - Buffalo, NY</option><option value="CUN">CUN - Cancun</option><option value="CID">CID - Cedar Rapids, IA</option><option value="CLT">CLT - Charlotte, NC</option><option value="MDW">MDW - Chicago (Midway), IL</option><option value="ORD">ORD - Chicago (O'Hare), IL</option><option value="CUU">CUU - Chihuahua</option><option value="CVG">CVG - Cincinnati, OH</option><option value="CLE">CLE - Cleveland, OH</option><option value="CMH">CMH - Columbus, OH</option><option value="CRP">CRP - Corpus Christi, TX</option><option value="CUL">CUL - Culiacan</option><option value="DFW">DFW - Dallas/Ft. Worth, TX</option><option value="DEN">DEN - Denver, CO</option><option value="DSM">DSM - Des Moines, IA</option><option value="DTW">DTW - Detroit, MI</option><option value="DGO">DGO - Durango</option><option value="ELP">ELP - El Paso, TX</option><option value="FAR">FAR - Fargo, ND</option><option value="FLL">FLL - Fort Lauderdale, FL</option><option value="RSW">RSW - Fort Myers, FL</option><option value="GRR">GRR - Grand Rapids, MI</option><option value="GDL">GDL - Guadalajara</option><option value="GUA">GUA - Guatemala City</option><option value="BDL">BDL - Hartford, CT</option><option value="IAH">IAH - Houston (Intercontinental), TX</option><option value="IND">IND - Indianapolis, IN</option><option value="JAX">JAX - Jacksonville, FL</option><option value="MCI">MCI - Kansas City, MO</option><option value="TYS">TYS - Knoxville, TN</option><option value="LAS">LAS - Las Vegas, NV</option><option value="BJX">BJX - Leon/Guanajuato</option><option value="LIT">LIT - Little Rock, AR</option><option value="LAX">LAX - Los Angeles, CA</option><option value="BUR">BUR - Los Angeles/Hollywood (Burbank), CA</option><option value="MSN">MSN - Madison, WI</option><option value="MEM">MEM - Memphis, TN</option><option value="MEX">MEX - Mexico City (AICM)</option><option value="NLU">NLU - Mexico City (AIFA)</option><option value="MIA">MIA - Miami, FL</option><option value="MKE">MKE - Milwaukee, WI</option><option value="MSP">MSP - Minneapolis/St. Paul, MN</option><option value="MBJ">MBJ - Montego Bay</option><option value="MTY">MTY - Monterrey</option><option value="MLM">MLM - Morelia</option><option value="MYR">MYR - Myrtle Beach, SC</option><option value="BNA">BNA - Nashville, TN</option><option value="MSY">MSY - New Orleans, LA</option><option value="JFK">JFK - New York (JFK), NY</option><option value="LGA">LGA - New York (La Guardia), NY</option><option value="ISP">ISP - New York/Islip, NY</option><option value="EWR">EWR - New York/Newark, NJ</option><option value="ORF">ORF - Norfolk, VA</option><option value="OAK">OAK - Oakland, CA</option><option value="OAX">OAX - Oaxaca</option><option value="OKC">OKC - Oklahoma City, OK</option><option value="OMA">OMA - Omaha, NE</option><option value="ONT">ONT - Ontario/Los Angeles, CA</option><option value="SNA">SNA - Orange County/ Los Angeles, CA</option><option value="MCO">MCO - Orlando, FL</option><option value="PBI">PBI - Palm Beach, FL</option><option value="PNS">PNS - Pensacola, FL</option><option value="PHL">PHL - Philadelphia, PA</option><option value="PHX">PHX - Phoenix/Sky Harbor, AZ</option><option value="PIT">PIT - Pittsburgh, PA</option><option value="PSE">PSE - Ponce</option><option value="PDX">PDX - Portland, OR</option><option value="PBC">PBC - Puebla</option><option value="PUJ">PUJ - Punta Cana</option><option value="QRO">QRO - Queretaro</option><option value="RDU">RDU - Raleigh/Durham, NC</option><option value="RNO">RNO - Reno/Tahoe, NV</option><option value="RIC">RIC - Richmond, VA</option><option value="SMF">SMF - Sacramento, CA</option><option value="SLC">SLC - Salt Lake City, UT</option><option value="SAT">SAT - San Antonio, TX</option><option value="SAN">SAN - San Diego, CA</option><option value="SFO">SFO - San Francisco, CA</option><option value="SJC">SJC - San Jose, CA</option><option value="SJO">SJO - San Jose</option><option value="SJU">SJU - San Juan</option><option value="SLP">SLP - San Luis Potosi</option><option value="SAP">SAP - San Pedro Sula</option><option value="SAL">SAL - San Salvador</option><option value="STI">STI - Santiago</option><option value="SDQ">SDQ - Santo Domingo</option><option value="SEA">SEA - Seattle/Tacoma, WA</option><option value="FSD">FSD - Sioux Falls, SD</option><option value="STL">STL - St. Louis, MO</option><option value="SXM">SXM - St. Marteen</option><option value="SYR">SYR - Syracuse, NY</option><option value="TPA">TPA - Tampa, FL</option><option value="TIJ">TIJ - Tijuana</option><option value="TLC">TLC - Toluca</option><option value="TTN">TTN - Trenton/Princeton, NJ</option><option value="TUS">TUS - Tucson, AZ</option><option value="TGZ">TGZ - Tuxtla Gutierrez</option><option value="UPN">UPN - Uruapan</option><option value="IAD">IAD - Washington (Dulles), VA</option><option value="DCA">DCA - Washington (Reagan), DC</option><option value="ZCL">ZCL - Zacatecas</option></select></label>
+    <label>To<select id="sTo"><option value="BQN">BQN - Aguadilla</option><option value="AGU">AGU - Aguascalientes</option><option value="ATL">ATL - Atlanta, GA</option><option value="AUS">AUS - Austin, TX</option><option value="BWI">BWI - Baltimore, MD</option><option value="XNA">XNA - Bentonville/Fayetteville, AR</option><option value="BOI">BOI - Boise, ID</option><option value="BOS">BOS - Boston, MA</option><option value="BUF">BUF - Buffalo, NY</option><option value="CUN" selected>CUN - Cancun</option><option value="CID">CID - Cedar Rapids, IA</option><option value="CLT">CLT - Charlotte, NC</option><option value="MDW">MDW - Chicago (Midway), IL</option><option value="ORD">ORD - Chicago (O'Hare), IL</option><option value="CUU">CUU - Chihuahua</option><option value="CVG">CVG - Cincinnati, OH</option><option value="CLE">CLE - Cleveland, OH</option><option value="CMH">CMH - Columbus, OH</option><option value="CRP">CRP - Corpus Christi, TX</option><option value="CUL">CUL - Culiacan</option><option value="DFW">DFW - Dallas/Ft. Worth, TX</option><option value="DEN">DEN - Denver, CO</option><option value="DSM">DSM - Des Moines, IA</option><option value="DTW">DTW - Detroit, MI</option><option value="DGO">DGO - Durango</option><option value="ELP">ELP - El Paso, TX</option><option value="FAR">FAR - Fargo, ND</option><option value="FLL">FLL - Fort Lauderdale, FL</option><option value="RSW">RSW - Fort Myers, FL</option><option value="GRR">GRR - Grand Rapids, MI</option><option value="GDL">GDL - Guadalajara</option><option value="GUA">GUA - Guatemala City</option><option value="BDL">BDL - Hartford, CT</option><option value="IAH">IAH - Houston (Intercontinental), TX</option><option value="IND">IND - Indianapolis, IN</option><option value="JAX">JAX - Jacksonville, FL</option><option value="MCI">MCI - Kansas City, MO</option><option value="TYS">TYS - Knoxville, TN</option><option value="LAS">LAS - Las Vegas, NV</option><option value="BJX">BJX - Leon/Guanajuato</option><option value="LIT">LIT - Little Rock, AR</option><option value="LAX">LAX - Los Angeles, CA</option><option value="BUR">BUR - Los Angeles/Hollywood (Burbank), CA</option><option value="MSN">MSN - Madison, WI</option><option value="MEM">MEM - Memphis, TN</option><option value="MEX">MEX - Mexico City (AICM)</option><option value="NLU">NLU - Mexico City (AIFA)</option><option value="MIA">MIA - Miami, FL</option><option value="MKE">MKE - Milwaukee, WI</option><option value="MSP">MSP - Minneapolis/St. Paul, MN</option><option value="MBJ">MBJ - Montego Bay</option><option value="MTY">MTY - Monterrey</option><option value="MLM">MLM - Morelia</option><option value="MYR">MYR - Myrtle Beach, SC</option><option value="BNA">BNA - Nashville, TN</option><option value="MSY">MSY - New Orleans, LA</option><option value="JFK">JFK - New York (JFK), NY</option><option value="LGA">LGA - New York (La Guardia), NY</option><option value="ISP">ISP - New York/Islip, NY</option><option value="EWR">EWR - New York/Newark, NJ</option><option value="ORF">ORF - Norfolk, VA</option><option value="OAK">OAK - Oakland, CA</option><option value="OAX">OAX - Oaxaca</option><option value="OKC">OKC - Oklahoma City, OK</option><option value="OMA">OMA - Omaha, NE</option><option value="ONT">ONT - Ontario/Los Angeles, CA</option><option value="SNA">SNA - Orange County/ Los Angeles, CA</option><option value="MCO">MCO - Orlando, FL</option><option value="PBI">PBI - Palm Beach, FL</option><option value="PNS">PNS - Pensacola, FL</option><option value="PHL">PHL - Philadelphia, PA</option><option value="PHX">PHX - Phoenix/Sky Harbor, AZ</option><option value="PIT">PIT - Pittsburgh, PA</option><option value="PSE">PSE - Ponce</option><option value="PDX">PDX - Portland, OR</option><option value="PBC">PBC - Puebla</option><option value="PUJ">PUJ - Punta Cana</option><option value="QRO">QRO - Queretaro</option><option value="RDU">RDU - Raleigh/Durham, NC</option><option value="RNO">RNO - Reno/Tahoe, NV</option><option value="RIC">RIC - Richmond, VA</option><option value="SMF">SMF - Sacramento, CA</option><option value="SLC">SLC - Salt Lake City, UT</option><option value="SAT">SAT - San Antonio, TX</option><option value="SAN">SAN - San Diego, CA</option><option value="SFO">SFO - San Francisco, CA</option><option value="SJC">SJC - San Jose, CA</option><option value="SJO">SJO - San Jose</option><option value="SJU">SJU - San Juan</option><option value="SLP">SLP - San Luis Potosi</option><option value="SAP">SAP - San Pedro Sula</option><option value="SAL">SAL - San Salvador</option><option value="STI">STI - Santiago</option><option value="SDQ">SDQ - Santo Domingo</option><option value="SEA">SEA - Seattle/Tacoma, WA</option><option value="FSD">FSD - Sioux Falls, SD</option><option value="STL">STL - St. Louis, MO</option><option value="SXM">SXM - St. Marteen</option><option value="SYR">SYR - Syracuse, NY</option><option value="TPA">TPA - Tampa, FL</option><option value="TIJ">TIJ - Tijuana</option><option value="TLC">TLC - Toluca</option><option value="TTN">TTN - Trenton/Princeton, NJ</option><option value="TUS">TUS - Tucson, AZ</option><option value="TGZ">TGZ - Tuxtla Gutierrez</option><option value="UPN">UPN - Uruapan</option><option value="IAD">IAD - Washington (Dulles), VA</option><option value="DCA">DCA - Washington (Reagan), DC</option><option value="ZCL">ZCL - Zacatecas</option></select></label>
     <label>Date (optional)<input type="date" id="sDate"></label>
     <label style="flex-direction:row;align-items:center;gap:6px;padding-bottom:9px">
       <input type="checkbox" id="sGw" checked> pass seats only</label>
@@ -173,18 +180,32 @@ today sits inside the range this route-date has actually traded in.</p>
     <a class="live" id="sLive" href="#" target="_blank" rel="noopener">check live on flyfrontier.com &rarr;</a>
   </div>
   <div id="sResults"></div>
-  <div class="watchbox" id="watchBox"></div>
+</section>
+<section id="alertsec">
+  <h2>Price alerts</h2>
+  <p class="sub">Drop your email and a route &mdash; fares get re-checked
+  <strong>every hour on the hour</strong>, and you get one email the moment the
+  GoWild all-in price hits your number. No account, no spam, GoWild fares only.</p>
+  <div class="searchbar">
+    <label>Email<input type="email" id="wEmail" placeholder="you@email.com" style="min-width:230px"></label>
+    <label>Route (or ANY)<input id="wRoute" list="routeList" value="ANY"
+      placeholder="MCO-PUJ" style="min-width:120px;text-transform:uppercase">
+      <datalist id="routeList"><option value="ANY">ANY route</option><option value="ATL-GUA">ATL-GUA</option><option value="ATL-SJO">ATL-SJO</option><option value="DEN-MBJ">DEN-MBJ</option><option value="DEN-SJO">DEN-SJO</option><option value="MCO-CUN">MCO-CUN</option><option value="MCO-MBJ">MCO-MBJ</option><option value="MCO-PUJ">MCO-PUJ</option><option value="MCO-SDQ">MCO-SDQ</option></datalist></label>
+    <label>Alert at/under $<input type="number" id="wMax" value="90" min="20" max="500" style="min-width:84px"></label>
+    <button id="wGo">ALERT ME</button>
+  </div>
+  <p class="sub" id="wMsg"></p>
 </section>
 <section>
   <h2>Cash fare timing</h2>
-  <p class="sub">Buy-or-wait for a normal ticket. The bar shows the observed low-to-high range; the marker is today. The shaded band is the bottom 15% &mdash; the buy zone. Showing the top 0; 15 quieter route-dates held back.</p>
+  <p class="sub">Buy-or-wait for a normal ticket. The bar shows the observed low-to-high range; the marker is today. The shaded band is the bottom 15% &mdash; the buy zone. Showing the top 0; 16 quieter route-dates held back.</p>
   <div class="empty">No buy or watch signals yet. Signals appear once a route-date has 5+ sweeps of history and its price drops into the bottom of its own range. Keep the daily sweep running.</div>
 </section>
 
 <section>
   <h2>GoWild window &mdash; next 10 days</h2>
-  <p class="sub">Frontier opens international GoWild booking 10 days out. GoWild prices and seat counts are read <strong>directly from flyfrontier.com</strong> at sweep time &mdash; all-in one-way totals ($0.01 fare + taxes and fees). A seat shown here can be gone by the time you book; rows marked proxy have not been swept yet. Top 15 of 15 in window.</p>
-  <table><thead><tr><th>Route</th><th>Departs</th><th class="hide-sm">Cash</th><th>GoWild</th><th>Pass seats</th><th>Basis</th></tr></thead><tbody>
+  <p class="sub">Frontier opens international GoWild booking 10 days out. GoWild prices and seat counts are read <strong>directly from flyfrontier.com</strong> at sweep time &mdash; all-in one-way totals ($0.01 fare + taxes and fees). A seat shown here can be gone by the time you book; rows marked proxy have not been swept yet. Top 16 of 16 in window.</p>
+  <table><thead><tr><th>Route</th><th>Departs</th><th class="hide-sm">Cash</th><th>GoWild</th><th>Pass seats</th><th>Basis</th><th></th></tr></thead><tbody>
       <tr class="row" style="animation-delay:0ms">
         <td><div class="route">DEN <span>&rarr;</span> MBJ</div>
             <span class="where hide-sm">Montego Bay, Jamaica</span></td>
@@ -194,6 +215,7 @@ today sits inside the range this route-date has actually traded in.</p>
         <td class="num"><span class="price">$82.01</span><span class="delta">all-in</span></td>
         <td><div class="score"><span class="pips"><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i></span><span class="num">1/1</span></div></td>
         <td><div class="why">pass seats on 1 of 1 flights; 1d out &mdash; seats can still clear</div></td>
+        <td><a class="bookbtn" target="_blank" rel="noopener" href="https://booking.flyfrontier.com/Flight/InternalSelect?s=true&o1=DEN&d1=MBJ&dd1=Jul%2020%2C%202026&ADT=1&mon=true">BOOK &rarr;</a></td>
       </tr>      <tr class="row" style="animation-delay:14ms">
         <td><div class="route">MCO <span>&rarr;</span> MBJ</div>
             <span class="where hide-sm">Montego Bay, Jamaica</span></td>
@@ -203,7 +225,18 @@ today sits inside the range this route-date has actually traded in.</p>
         <td class="num"><span class="price">$82.01</span><span class="delta">all-in</span></td>
         <td><div class="score"><span class="pips"><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i></span><span class="num">1/1</span></div></td>
         <td><div class="why">pass seats on 1 of 1 flights; 2d out &mdash; seats can still clear</div></td>
+        <td><a class="bookbtn" target="_blank" rel="noopener" href="https://booking.flyfrontier.com/Flight/InternalSelect?s=true&o1=MCO&d1=MBJ&dd1=Jul%2021%2C%202026&ADT=1&mon=true">BOOK &rarr;</a></td>
       </tr>      <tr class="row" style="animation-delay:28ms">
+        <td><div class="route">MCO <span>&rarr;</span> PUJ</div>
+            <span class="where hide-sm">Punta Cana, Dominican Republic</span></td>
+        <td class="num">Jul 19
+            <span class="delta">0d out</span></td>
+        <td class="num hide-sm">$258<span class="delta">cash</span></td>
+        <td class="num"><span class="price">$87.93</span><span class="delta">all-in</span></td>
+        <td><div class="score"><span class="pips"><i class="pip on"></i><i class="pip on"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span class="num">1/4</span></div></td>
+        <td><div class="why">pass seats on 1 of 4 flights; connections only; 0d out &mdash; seats can still clear</div></td>
+        <td><a class="bookbtn" target="_blank" rel="noopener" href="https://booking.flyfrontier.com/Flight/InternalSelect?s=true&o1=MCO&d1=PUJ&dd1=Jul%2019%2C%202026&ADT=1&mon=true">BOOK &rarr;</a></td>
+      </tr>      <tr class="row" style="animation-delay:42ms">
         <td><div class="route">MCO <span>&rarr;</span> PUJ</div>
             <span class="where hide-sm">Punta Cana, Dominican Republic</span></td>
         <td class="num">Jul 21
@@ -212,25 +245,8 @@ today sits inside the range this route-date has actually traded in.</p>
         <td class="num"><span class="price">$87.93</span><span class="delta">all-in</span></td>
         <td><div class="score"><span class="pips"><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip"></i><i class="pip"></i></span><span class="num">8/15</span></div></td>
         <td><div class="why">pass seats on 8 of 15 flights; connections only; 2d out &mdash; seats can still clear</div></td>
-      </tr>      <tr class="row" style="animation-delay:42ms">
-        <td><div class="route">MCO <span>&rarr;</span> PUJ</div>
-            <span class="where hide-sm">Punta Cana, Dominican Republic</span></td>
-        <td class="num">Jul 19
-            <span class="delta">0d out</span></td>
-        <td class="num hide-sm">$258<span class="delta">cash</span></td>
-        <td class="num"><span class="price">$87.93</span><span class="delta">all-in</span></td>
-        <td><div class="score"><span class="pips"><i class="pip on"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span class="num">1/8</span></div></td>
-        <td><div class="why">pass seats on 1 of 8 flights; connections only; 0d out &mdash; seats can still clear</div></td>
+        <td><a class="bookbtn" target="_blank" rel="noopener" href="https://booking.flyfrontier.com/Flight/InternalSelect?s=true&o1=MCO&d1=PUJ&dd1=Jul%2021%2C%202026&ADT=1&mon=true">BOOK &rarr;</a></td>
       </tr>      <tr class="row" style="animation-delay:56ms">
-        <td><div class="route">MCO <span>&rarr;</span> SDQ</div>
-            <span class="where hide-sm">Santo Domingo, Dominican Republic</span></td>
-        <td class="num">Jul 21
-            <span class="delta">2d out</span></td>
-        <td class="num hide-sm">$258<span class="delta">cash</span></td>
-        <td class="num"><span class="price">$87.93</span><span class="delta">all-in</span></td>
-        <td><div class="score"><span class="pips"><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i></span><span class="num">3/3</span></div></td>
-        <td><div class="why">pass seats on 3 of 3 flights; 2d out &mdash; seats can still clear</div></td>
-      </tr>      <tr class="row" style="animation-delay:70ms">
         <td><div class="route">MCO <span>&rarr;</span> PUJ</div>
             <span class="where hide-sm">Punta Cana, Dominican Republic</span></td>
         <td class="num">Jul 20
@@ -239,7 +255,28 @@ today sits inside the range this route-date has actually traded in.</p>
         <td class="num"><span class="price">$87.93</span><span class="delta">all-in</span></td>
         <td><div class="score"><span class="pips"><i class="pip on"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span class="num">3/18</span></div></td>
         <td><div class="why">pass seats on 3 of 18 flights; connections only; 1d out &mdash; seats can still clear</div></td>
+        <td><a class="bookbtn" target="_blank" rel="noopener" href="https://booking.flyfrontier.com/Flight/InternalSelect?s=true&o1=MCO&d1=PUJ&dd1=Jul%2020%2C%202026&ADT=1&mon=true">BOOK &rarr;</a></td>
+      </tr>      <tr class="row" style="animation-delay:70ms">
+        <td><div class="route">MCO <span>&rarr;</span> SDQ</div>
+            <span class="where hide-sm">Santo Domingo, Dominican Republic</span></td>
+        <td class="num">Jul 21
+            <span class="delta">2d out</span></td>
+        <td class="num hide-sm">$258<span class="delta">cash</span></td>
+        <td class="num"><span class="price">$87.93</span><span class="delta">all-in</span></td>
+        <td><div class="score"><span class="pips"><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i></span><span class="num">3/3</span></div></td>
+        <td><div class="why">pass seats on 3 of 3 flights; 2d out &mdash; seats can still clear</div></td>
+        <td><a class="bookbtn" target="_blank" rel="noopener" href="https://booking.flyfrontier.com/Flight/InternalSelect?s=true&o1=MCO&d1=SDQ&dd1=Jul%2021%2C%202026&ADT=1&mon=true">BOOK &rarr;</a></td>
       </tr>      <tr class="row" style="animation-delay:84ms">
+        <td><div class="route">MCO <span>&rarr;</span> CUN</div>
+            <span class="where hide-sm">Cancún, Mexico</span></td>
+        <td class="num">Jul 19
+            <span class="delta">0d out</span></td>
+        <td class="num hide-sm">$524<span class="delta">cash</span></td>
+        <td class="num"><span class="price">$94.59</span><span class="delta">all-in</span></td>
+        <td><div class="score"><span class="pips"><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip"></i><i class="pip"></i></span><span class="num">1/2</span></div></td>
+        <td><div class="why">pass seats on 1 of 2 flights; connections only; 0d out &mdash; seats can still clear</div></td>
+        <td><a class="bookbtn" target="_blank" rel="noopener" href="https://booking.flyfrontier.com/Flight/InternalSelect?s=true&o1=MCO&d1=CUN&dd1=Jul%2019%2C%202026&ADT=1&mon=true">BOOK &rarr;</a></td>
+      </tr>      <tr class="row" style="animation-delay:98ms">
         <td><div class="route">MCO <span>&rarr;</span> MBJ</div>
             <span class="where hide-sm">Montego Bay, Jamaica</span></td>
         <td class="num">Jul 29
@@ -248,7 +285,8 @@ today sits inside the range this route-date has actually traded in.</p>
         <td class="num"><span class="price">$144.49</span><span class="delta">all-in</span></td>
         <td><div class="score"><span class="pips"><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i></span><span class="num">1/1</span></div></td>
         <td><div class="why">pass seats on 1 of 1 flights; just entered the window</div></td>
-      </tr>      <tr class="row" style="animation-delay:98ms">
+        <td><a class="bookbtn" target="_blank" rel="noopener" href="https://booking.flyfrontier.com/Flight/InternalSelect?s=true&o1=MCO&d1=MBJ&dd1=Jul%2029%2C%202026&ADT=1&mon=true">BOOK &rarr;</a></td>
+      </tr>      <tr class="row" style="animation-delay:112ms">
         <td><div class="route">MCO <span>&rarr;</span> SDQ</div>
             <span class="where hide-sm">Santo Domingo, Dominican Republic</span></td>
         <td class="num">Jul 20
@@ -257,7 +295,8 @@ today sits inside the range this route-date has actually traded in.</p>
         <td class="num"><span class="delta">&mdash; none</span></td>
         <td><div class="score"><span class="pips"><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span class="num">0/3</span></div></td>
         <td><div class="why">no pass seats across 3 flights at last sweep; 1d out &mdash; seats can still clear</div></td>
-      </tr>      <tr class="row" style="animation-delay:112ms">
+        <td><a class="bookbtn dim" target="_blank" rel="noopener" href="https://booking.flyfrontier.com/Flight/InternalSelect?s=true&o1=MCO&d1=SDQ&dd1=Jul%2020%2C%202026&ADT=1&mon=true">check</a></td>
+      </tr>      <tr class="row" style="animation-delay:126ms">
         <td><div class="route">DEN <span>&rarr;</span> MBJ</div>
             <span class="where hide-sm">Montego Bay, Jamaica</span></td>
         <td class="num">Jul 21
@@ -266,7 +305,8 @@ today sits inside the range this route-date has actually traded in.</p>
         <td class="num"><span class="delta">&mdash; none</span></td>
         <td><div class="score"><span class="pips"><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span class="num">0/1</span></div></td>
         <td><div class="why">no pass seats across 1 flights at last sweep; 2d out &mdash; seats can still clear</div></td>
-      </tr>      <tr class="row" style="animation-delay:126ms">
+        <td><a class="bookbtn dim" target="_blank" rel="noopener" href="https://booking.flyfrontier.com/Flight/InternalSelect?s=true&o1=DEN&d1=MBJ&dd1=Jul%2021%2C%202026&ADT=1&mon=true">check</a></td>
+      </tr>      <tr class="row" style="animation-delay:140ms">
         <td><div class="route">DEN <span>&rarr;</span> MBJ</div>
             <span class="where hide-sm">Montego Bay, Jamaica</span></td>
         <td class="num">Jul 29
@@ -275,7 +315,8 @@ today sits inside the range this route-date has actually traded in.</p>
         <td class="num"><span class="delta">&mdash; none</span></td>
         <td><div class="score"><span class="pips"><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span class="num">0/1</span></div></td>
         <td><div class="why">no pass seats across 1 flights at last sweep; just entered the window</div></td>
-      </tr>      <tr class="row" style="animation-delay:140ms">
+        <td><a class="bookbtn dim" target="_blank" rel="noopener" href="https://booking.flyfrontier.com/Flight/InternalSelect?s=true&o1=DEN&d1=MBJ&dd1=Jul%2029%2C%202026&ADT=1&mon=true">check</a></td>
+      </tr>      <tr class="row" style="animation-delay:154ms">
         <td><div class="route">DEN <span>&rarr;</span> SJO</div>
             <span class="where hide-sm">San José, Costa Rica</span></td>
         <td class="num">Jul 29
@@ -284,7 +325,8 @@ today sits inside the range this route-date has actually traded in.</p>
         <td class="num"><span class="delta">&mdash; none</span></td>
         <td><div class="score"><span class="pips"><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span class="num">0/2</span></div></td>
         <td><div class="why">no pass seats across 2 flights at last sweep; just entered the window</div></td>
-      </tr>      <tr class="row" style="animation-delay:154ms">
+        <td><a class="bookbtn dim" target="_blank" rel="noopener" href="https://booking.flyfrontier.com/Flight/InternalSelect?s=true&o1=DEN&d1=SJO&dd1=Jul%2029%2C%202026&ADT=1&mon=true">check</a></td>
+      </tr>      <tr class="row" style="animation-delay:168ms">
         <td><div class="route">MCO <span>&rarr;</span> PUJ</div>
             <span class="where hide-sm">Punta Cana, Dominican Republic</span></td>
         <td class="num">Jul 29
@@ -293,7 +335,8 @@ today sits inside the range this route-date has actually traded in.</p>
         <td class="num"><span class="delta">&mdash; none</span></td>
         <td><div class="score"><span class="pips"><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span class="num">0/17</span></div></td>
         <td><div class="why">no pass seats across 17 flights at last sweep; just entered the window</div></td>
-      </tr>      <tr class="row" style="animation-delay:168ms">
+        <td><a class="bookbtn dim" target="_blank" rel="noopener" href="https://booking.flyfrontier.com/Flight/InternalSelect?s=true&o1=MCO&d1=PUJ&dd1=Jul%2029%2C%202026&ADT=1&mon=true">check</a></td>
+      </tr>      <tr class="row" style="animation-delay:182ms">
         <td><div class="route">MCO <span>&rarr;</span> SDQ</div>
             <span class="where hide-sm">Santo Domingo, Dominican Republic</span></td>
         <td class="num">Jul 29
@@ -302,7 +345,8 @@ today sits inside the range this route-date has actually traded in.</p>
         <td class="num"><span class="delta">&mdash; none</span></td>
         <td><div class="score"><span class="pips"><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span class="num">0/3</span></div></td>
         <td><div class="why">no pass seats across 3 flights at last sweep; just entered the window</div></td>
-      </tr>      <tr class="row" style="animation-delay:182ms">
+        <td><a class="bookbtn dim" target="_blank" rel="noopener" href="https://booking.flyfrontier.com/Flight/InternalSelect?s=true&o1=MCO&d1=SDQ&dd1=Jul%2029%2C%202026&ADT=1&mon=true">check</a></td>
+      </tr>      <tr class="row" style="animation-delay:196ms">
         <td><div class="route">ATL <span>&rarr;</span> GUA</div>
             <span class="where hide-sm">Guatemala City, Guatemala</span></td>
         <td class="num">Jul 29
@@ -311,7 +355,8 @@ today sits inside the range this route-date has actually traded in.</p>
         <td class="num"><span class="delta">&mdash; none</span></td>
         <td><div class="score"><span class="pips"><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span class="num">0/4</span></div></td>
         <td><div class="why">no pass seats across 4 flights at last sweep; just entered the window</div></td>
-      </tr>      <tr class="row" style="animation-delay:196ms">
+        <td><a class="bookbtn dim" target="_blank" rel="noopener" href="https://booking.flyfrontier.com/Flight/InternalSelect?s=true&o1=ATL&d1=GUA&dd1=Jul%2029%2C%202026&ADT=1&mon=true">check</a></td>
+      </tr>      <tr class="row" style="animation-delay:210ms">
         <td><div class="route">ATL <span>&rarr;</span> SJO</div>
             <span class="where hide-sm">San José, Costa Rica</span></td>
         <td class="num">Jul 29
@@ -320,6 +365,7 @@ today sits inside the range this route-date has actually traded in.</p>
         <td class="num"><span class="delta">&mdash; none</span></td>
         <td><div class="score"><span class="pips"><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span class="num">0/3</span></div></td>
         <td><div class="why">no pass seats across 3 flights at last sweep; just entered the window</div></td>
+        <td><a class="bookbtn dim" target="_blank" rel="noopener" href="https://booking.flyfrontier.com/Flight/InternalSelect?s=true&o1=ATL&d1=SJO&dd1=Jul%2029%2C%202026&ADT=1&mon=true">check</a></td>
       </tr>  </tbody></table>
 </section>
 
@@ -332,7 +378,8 @@ now,&quot; and confirm logged in at flyfrontier.com before you count on it.</p>
 and seat assignments, which is where Frontier makes its money. Compare
 like for like before calling anything cheap.</p>
 </footer><script>
-var FW = [{"o":"ATL","sig":"LEARNING","fc":4,"cash":239,"g":-1,"gc":0,"dep":"2026-07-29","d":"GUA"},{"o":"ATL","sig":"LEARNING","fc":3,"cash":247,"g":-1,"gc":0,"dep":"2026-07-29","d":"SJO"},{"o":"DEN","sig":"LEARNING","fc":1,"cash":442,"g":82.01,"gc":1,"dep":"2026-07-20","d":"MBJ"},{"o":"DEN","sig":"LEARNING","fc":1,"cash":527,"g":-1,"gc":0,"dep":"2026-07-21","d":"MBJ"},{"o":"DEN","sig":"LEARNING","fc":1,"cash":377,"g":-1,"gc":0,"dep":"2026-07-29","d":"MBJ"},{"o":"DEN","sig":"LEARNING","fc":2,"cash":267,"g":-1,"gc":0,"dep":"2026-07-29","d":"SJO"},{"o":"MCO","sig":"LEARNING","fc":1,"cash":491,"g":82.01,"gc":1,"dep":"2026-07-21","d":"MBJ"},{"o":"MCO","sig":"LEARNING","fc":1,"cash":346,"g":144.49,"gc":1,"dep":"2026-07-29","d":"MBJ"},{"o":"MCO","sig":"LEARNING","fc":8,"cash":258,"g":87.93,"gc":1,"dep":"2026-07-19","d":"PUJ"},{"o":"MCO","sig":"LEARNING","fc":18,"cash":258,"g":87.93,"gc":3,"dep":"2026-07-20","d":"PUJ"},{"o":"MCO","sig":"LEARNING","fc":15,"cash":258,"g":87.93,"gc":8,"dep":"2026-07-21","d":"PUJ"},{"o":"MCO","sig":"LEARNING","fc":17,"cash":238,"g":-1,"gc":0,"dep":"2026-07-29","d":"PUJ"},{"o":"MCO","sig":"LEARNING","fc":3,"cash":473,"g":-1,"gc":0,"dep":"2026-07-20","d":"SDQ"},{"o":"MCO","sig":"LEARNING","fc":3,"cash":258,"g":87.93,"gc":3,"dep":"2026-07-21","d":"SDQ"},{"o":"MCO","sig":"LEARNING","fc":3,"cash":238,"g":-1,"gc":0,"dep":"2026-07-29","d":"SDQ"}];
+var FW = [{"o":"ATL","sig":"LEARNING","fc":4,"cash":239,"g":-1,"gc":0,"dep":"2026-07-29","d":"GUA"},{"o":"ATL","sig":"LEARNING","fc":3,"cash":247,"g":-1,"gc":0,"dep":"2026-07-29","d":"SJO"},{"o":"DEN","sig":"LEARNING","fc":1,"cash":442,"g":82.01,"gc":1,"dep":"2026-07-20","d":"MBJ"},{"o":"DEN","sig":"LEARNING","fc":1,"cash":527,"g":-1,"gc":0,"dep":"2026-07-21","d":"MBJ"},{"o":"DEN","sig":"LEARNING","fc":1,"cash":377,"g":-1,"gc":0,"dep":"2026-07-29","d":"MBJ"},{"o":"DEN","sig":"LEARNING","fc":2,"cash":267,"g":-1,"gc":0,"dep":"2026-07-29","d":"SJO"},{"o":"MCO","sig":"LEARNING","fc":2,"cash":524,"g":94.59,"gc":1,"dep":"2026-07-19","d":"CUN"},{"o":"MCO","sig":"LEARNING","fc":1,"cash":491,"g":82.01,"gc":1,"dep":"2026-07-21","d":"MBJ"},{"o":"MCO","sig":"LEARNING","fc":1,"cash":346,"g":144.49,"gc":1,"dep":"2026-07-29","d":"MBJ"},{"o":"MCO","sig":"LEARNING","fc":4,"cash":258,"g":87.93,"gc":1,"dep":"2026-07-19","d":"PUJ"},{"o":"MCO","sig":"LEARNING","fc":18,"cash":258,"g":87.93,"gc":3,"dep":"2026-07-20","d":"PUJ"},{"o":"MCO","sig":"LEARNING","fc":15,"cash":258,"g":87.93,"gc":8,"dep":"2026-07-21","d":"PUJ"},{"o":"MCO","sig":"LEARNING","fc":17,"cash":238,"g":-1,"gc":0,"dep":"2026-07-29","d":"PUJ"},{"o":"MCO","sig":"LEARNING","fc":3,"cash":473,"g":-1,"gc":0,"dep":"2026-07-20","d":"SDQ"},{"o":"MCO","sig":"LEARNING","fc":3,"cash":258,"g":87.93,"gc":3,"dep":"2026-07-21","d":"SDQ"},{"o":"MCO","sig":"LEARNING","fc":3,"cash":238,"g":-1,"gc":0,"dep":"2026-07-29","d":"SDQ"}];
+var FWFORM = {"routeEntry":"","emailEntry":"","priceEntry":"","fallback":"coreyduncan16@gmail.com","action":""};
 var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function el(i){ return document.getElementById(i); }
 function money(v){ return (v == null || v < 0) ? '&mdash;' : '$' + Number(v).toFixed(2); }
@@ -343,9 +390,31 @@ function liveUrl(o, d, ds){
 }
 function updLive(){ el('sLive').href = liveUrl(el('sFrom').value, el('sTo').value, el('sDate').value); }
 function showWatch(o, d, g){
-  var w = { route: o + '-' + d, maxGw: Math.ceil(g), dropPct: 15, to: ['you@example.com'] };
-  var b = el('watchBox'); b.style.display = 'block';
-  b.textContent = 'To get an email/text when this GoWild fare drops, add this entry to the "watches" list in watches.json on the tracker machine (see README):\n\n' + JSON.stringify(w, null, 2);
+  el('wRoute').value = o + '-' + d;
+  el('wMax').value = Math.max(20, Math.ceil(g));
+  document.getElementById('alertsec').scrollIntoView({ behavior: 'smooth' });
+  el('wEmail').focus();
+}
+function submitWatch(){
+  var em = el('wEmail').value.trim();
+  var rt = el('wRoute').value.trim().toUpperCase();
+  var mx = el('wMax').value;
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { el('wMsg').textContent = 'Please enter a valid email address.'; return; }
+  if (!/^([A-Z]{3}-[A-Z]{3}|ANY)$/.test(rt)) { el('wMsg').textContent = 'Route must look like MCO-PUJ (airport codes), or ANY.'; return; }
+  if (FWFORM.action) {
+    var fd = new FormData();
+    fd.append(FWFORM.emailEntry, em);
+    fd.append(FWFORM.routeEntry, rt);
+    fd.append(FWFORM.priceEntry, mx);
+    fetch(FWFORM.action, { method: 'POST', mode: 'no-cors', body: fd });
+    el('wMsg').textContent = 'You are on the list! ' + rt + ' will be checked hourly; one email lands when the GoWild total is $' + mx + ' or less.';
+    el('wEmail').value = '';
+  } else {
+    el('wMsg').textContent = 'Opening your email app - just hit send and you will be added.';
+    location.href = 'mailto:' + FWFORM.fallback
+      + '?subject=' + encodeURIComponent('FareWatch alert request')
+      + '&body=' + encodeURIComponent('Please add me to FareWatch price alerts.\nEmail: ' + em + '\nRoute: ' + rt + '\nAlert at or under: $' + mx);
+  }
 }
 function doSearch(){
   updLive();
@@ -374,6 +443,8 @@ function doSearch(){
 }
 document.addEventListener('DOMContentLoaded', function(){
   el('sGo').onclick = doSearch;
+  el('wGo').onclick = submitWatch;
+  el('wEmail').addEventListener('keydown', function(e){ if (e.key === 'Enter') submitWatch(); });
   ['sFrom','sTo','sDate','sGw'].forEach(function(i){ el(i).onchange = updLive; });
   updLive();
   doSearch();
