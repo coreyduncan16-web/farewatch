@@ -118,18 +118,20 @@ function Get-FrontierFlightData([string]$o, [string]$d, [datetime]$dep) {
     if ($flights.Count -eq 0) { return $null }
     $out = New-Object System.Collections.ArrayList
     foreach ($f in $flights) {
-        $legs = @($f.legs)
-        if ($legs.Count -eq 0) { continue }
-        $nums = @($legs | ForEach-Object { 'F9 ' + ([string]$_.flightNumber).Trim() }) -join ' / '
-        [void]$out.Add(@{
-            depTime = [datetime]::Parse([string]$legs[0].departureDate, $script:FwInv)
-            arrTime = [datetime]::Parse([string]$legs[$legs.Count - 1].arrivalDate, $script:FwInv)
-            stops   = $legs.Count - 1
-            flightNums = $nums
-            cash = [double]$f.standardFare
-            gw   = [double]$f.goWildFare
-            gwOn = [bool]$f.isGoWildFareEnabled
-        })
+        try {
+            $legs = @($f.legs)
+            if ($legs.Count -eq 0) { continue }
+            $nums = @($legs | ForEach-Object { 'F9 ' + ([string]$_.flightNumber).Trim() }) -join ' / '
+            [void]$out.Add(@{
+                depTime = [datetime]::Parse([string]$legs[0].departureDate, $script:FwInv)
+                arrTime = [datetime]::Parse([string]$legs[$legs.Count - 1].arrivalDate, $script:FwInv)
+                stops   = $legs.Count - 1
+                flightNums = $nums
+                cash = [double]$f.standardFare
+                gw   = [double]$f.goWildFare
+                gwOn = [bool]$f.isGoWildFareEnabled
+            })
+        } catch { continue }   # skip flights with malformed times/fares
     }
     if ($out.Count -eq 0) { return $null }
     ,@($out)

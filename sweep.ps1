@@ -12,6 +12,7 @@
 param(
     [switch]$Demo,
     [switch]$VerifyCoverage,
+    [switch]$WatchOnly,
     [int]$MaxCalls = 0,
     [string]$Provider = '',
     [switch]$NoRender
@@ -264,25 +265,53 @@ if ($Demo) {
         Write-Output ('Monthly API budget exhausted ({0}/{1}). Rendering from existing history only.' -f $usage.calls, $cfg.apiMonthlyBudget)
     }
 
-    # Prioritise: stalest first, with big bonuses for the GoWild window and
-    # for imminent departures / the release-day edge.
     $window = [int]$cfg.goWildWindowDays
-    $candidates = New-Object System.Collections.ArrayList
-    foreach ($rd in $universe) {
-        $stale = 999
-        if ($hist.ContainsKey($rd.key)) {
-            $obs = $hist[$rd.key]
-            $last = [datetime]::ParseExact([string]$obs[$obs.Count - 1].d, 'yyyy-MM-dd', $null)
-            $stale = ($today - $last).Days
+    if ($WatchOnly) {
+        # Hourly mode: only route-dates inside the GoWild window for routes
+        # somebody is watching (route "ANY" watches everything). Same-day
+        # re-sweeps are the whole point here.
+        $watched = @{}
+        $anyWatch = $false
+        $watchPath = Get-FwPath 'watches.json'
+        if (Test-Path $watchPath) {
+            $wj = Get-Content -Raw -Encoding UTF8 $watchPath | ConvertFrom-Json
+            foreach ($w in @($wj.watches)) {
+                $r = ([string]$w.route).ToUpper()
+                if ($r -eq 'ANY') { $anyWatch = $true } else { $watched[$r] = $true }
+            }
         }
-        if ($stale -lt 1) { continue }   # already swept today
-        $score = [double]$stale
-        if ($rd.daysOut -le $window) { $score += 50 }
-        if ($rd.daysOut -le 2 -or $rd.daysOut -eq $window) { $score += 25 }
-        $rd.score = $score
-        [void]$candidates.Add($rd)
+        if (-not $anyWatch -and $watched.Keys.Count -eq 0) {
+            Write-Output 'watch sweep: no watches configured; nothing to check.'
+            $planned = @()
+        } else {
+            $cap = [int]$cfg.watchSweepCalls
+            if ($MaxCalls -gt 0) { $cap = $MaxCalls }
+            if ($cap -gt $budget -and $budget -gt 0) { $cap = $budget }
+            $cands = @($universe | Where-Object {
+                $_.daysOut -le $window -and ($anyWatch -or $watched.ContainsKey(('{0}-{1}' -f $_.o, $_.d)))
+            })
+            $planned = @($cands | Sort-Object { $_.daysOut } | Select-Object -First $cap)
+        }
+    } else {
+        # Daily mode: stalest first, with big bonuses for the GoWild window
+        # and for imminent departures / the release-day edge.
+        $candidates = New-Object System.Collections.ArrayList
+        foreach ($rd in $universe) {
+            $stale = 999
+            if ($hist.ContainsKey($rd.key)) {
+                $obs = $hist[$rd.key]
+                $last = [datetime]::ParseExact([string]$obs[$obs.Count - 1].d, 'yyyy-MM-dd', $null)
+                $stale = ($today - $last).Days
+            }
+            if ($stale -lt 1) { continue }   # already swept today
+            $score = [double]$stale
+            if ($rd.daysOut -le $window) { $score += 50 }
+            if ($rd.daysOut -le 2 -or $rd.daysOut -eq $window) { $score += 25 }
+            $rd.score = $score
+            [void]$candidates.Add($rd)
+        }
+        $planned = @($candidates | Sort-Object { $_.score } -Descending | Select-Object -First $budget)
     }
-    $planned = @($candidates | Sort-Object { $_.score } -Descending | Select-Object -First $budget)
 
     Write-Output ('Sweeping {0} route-dates via {1} (month usage {2}/{3})...' -f $planned.Count, $Provider, $usage.calls, $cfg.apiMonthlyBudget)
     $got = 0

@@ -13,6 +13,15 @@
   "minObservations": 5,
   "apiMonthlyBudget": 3720,
   "apiCallsPerRun": 120,
+  "watchSweepCalls": 30,
+  "watchIntake": {
+    "formAction": "",
+    "emailEntry": "",
+    "routeEntry": "",
+    "priceEntry": "",
+    "csvUrl": "",
+    "fallbackEmail": "coreyduncan16@gmail.com"
+  },
   "cashTableRows": 22,
   "goWildTableRows": 16,
   "airports": {

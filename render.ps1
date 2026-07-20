@@ -459,11 +459,33 @@ $searchHtml = @'
     <a class="live" id="sLive" href="#" target="_blank" rel="noopener">check live on flyfrontier.com &rarr;</a>
   </div>
   <div id="sResults"></div>
-  <div class="watchbox" id="watchBox"></div>
 </section>
 
 '@
 [void]$sb.Append($searchHtml.Replace('__FROMOPTS__', $fromOpts).Replace('__TOOPTS__', $toOpts))
+
+# price-alert signup section
+$routeOpts = '<option value="ANY">ANY route</option>'
+foreach ($rt in @($records | ForEach-Object { '{0}-{1}' -f $_.o, $_.d } | Sort-Object -Unique)) {
+    $routeOpts += ('<option value="{0}">{0}</option>' -f $rt)
+}
+$alertHtml = @'
+<section id="alertsec">
+  <h2>Price alerts</h2>
+  <p class="sub">Drop your email and a route &mdash; fares get re-checked
+  <strong>every hour on the hour</strong>, and you get one email the moment the
+  GoWild all-in price hits your number. No account, no spam, GoWild fares only.</p>
+  <div class="searchbar">
+    <label>Email<input type="email" id="wEmail" placeholder="you@email.com" style="min-width:230px"></label>
+    <label>Route<select id="wRoute">__WROUTEOPTS__</select></label>
+    <label>Alert at/under $<input type="number" id="wMax" value="90" min="20" max="500" style="min-width:84px"></label>
+    <button id="wGo">ALERT ME</button>
+  </div>
+  <p class="sub" id="wMsg"></p>
+</section>
+
+'@
+[void]$sb.Append($alertHtml.Replace('__WROUTEOPTS__', $routeOpts))
 
 # cash section
 [void]$sb.Append('<section>' + "`n" + '  <h2>Cash fare timing</h2>' + "`n")
@@ -519,6 +541,7 @@ if ($fwItems.Count -gt 0) { $fwJson = ConvertTo-Json @($fwItems) -Compress -Dept
 $searchJs = @'
 <script>
 var FW = __FWDATA__;
+var FWFORM = __FWFORM__;
 var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function el(i){ return document.getElementById(i); }
 function money(v){ return (v == null || v < 0) ? '&mdash;' : '$' + Number(v).toFixed(2); }
@@ -529,9 +552,32 @@ function liveUrl(o, d, ds){
 }
 function updLive(){ el('sLive').href = liveUrl(el('sFrom').value, el('sTo').value, el('sDate').value); }
 function showWatch(o, d, g){
-  var w = { route: o + '-' + d, maxGw: Math.ceil(g), dropPct: 15, to: ['you@example.com'] };
-  var b = el('watchBox'); b.style.display = 'block';
-  b.textContent = 'To get an email/text when this GoWild fare drops, add this entry to the "watches" list in watches.json on the tracker machine (see README):\n\n' + JSON.stringify(w, null, 2);
+  var sel = el('wRoute');
+  var val = o + '-' + d;
+  for (var i = 0; i < sel.options.length; i++) { if (sel.options[i].value === val) { sel.value = val; break; } }
+  el('wMax').value = Math.max(20, Math.ceil(g));
+  document.getElementById('alertsec').scrollIntoView({ behavior: 'smooth' });
+  el('wEmail').focus();
+}
+function submitWatch(){
+  var em = el('wEmail').value.trim();
+  var rt = el('wRoute').value;
+  var mx = el('wMax').value;
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { el('wMsg').textContent = 'Please enter a valid email address.'; return; }
+  if (FWFORM.action) {
+    var fd = new FormData();
+    fd.append(FWFORM.emailEntry, em);
+    fd.append(FWFORM.routeEntry, rt);
+    fd.append(FWFORM.priceEntry, mx);
+    fetch(FWFORM.action, { method: 'POST', mode: 'no-cors', body: fd });
+    el('wMsg').textContent = 'You are on the list! ' + rt + ' will be checked hourly; one email lands when the GoWild total is $' + mx + ' or less.';
+    el('wEmail').value = '';
+  } else {
+    el('wMsg').textContent = 'Opening your email app - just hit send and you will be added.';
+    location.href = 'mailto:' + FWFORM.fallback
+      + '?subject=' + encodeURIComponent('FareWatch alert request')
+      + '&body=' + encodeURIComponent('Please add me to FareWatch price alerts.\nEmail: ' + em + '\nRoute: ' + rt + '\nAlert at or under: $' + mx);
+  }
 }
 function doSearch(){
   updLive();
@@ -560,13 +606,22 @@ function doSearch(){
 }
 document.addEventListener('DOMContentLoaded', function(){
   el('sGo').onclick = doSearch;
+  el('wGo').onclick = submitWatch;
+  el('wEmail').addEventListener('keydown', function(e){ if (e.key === 'Enter') submitWatch(); });
   ['sFrom','sTo','sDate','sGw'].forEach(function(i){ el(i).onchange = updLive; });
   updLive();
   doSearch();
 });
 </script>
 '@
-[void]$sb.Append($searchJs.Replace('__FWDATA__', $fwJson))
+$formCfg = @{
+    action = [string]$cfg.watchIntake.formAction
+    emailEntry = [string]$cfg.watchIntake.emailEntry
+    routeEntry = [string]$cfg.watchIntake.routeEntry
+    priceEntry = [string]$cfg.watchIntake.priceEntry
+    fallback = [string]$cfg.watchIntake.fallbackEmail
+}
+[void]$sb.Append($searchJs.Replace('__FWDATA__', $fwJson).Replace('__FWFORM__', ($formCfg | ConvertTo-Json -Compress)))
 [void]$sb.Append('</div></body></html>')
 
 $outPath = Get-FwPath 'dashboard.html'

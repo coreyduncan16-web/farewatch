@@ -108,6 +108,30 @@ own booking search. It runs entirely in the browser, so it works on static
 hosting too. Each result has a **watch** button that generates the
 `watches.json` entry for that route.
 
+## Website signups ("Price alerts" box)
+
+Visitors type their email, pick a route and a price — done. Fares are
+re-checked **every hour on the hour** (light sweep: watched routes in the
+GoWild window only) and one email goes out when the price hits.
+
+Until you connect a Google Form, the box falls back to opening the
+visitor's email app with a prefilled request to you. To make it fully
+automatic (5-minute one-time setup, free):
+
+1. At <https://forms.google.com> create a form with three **short answer**
+   questions in this order: *Email*, *Route*, *Max price*.
+2. Click the three-dot menu → **Get pre-filled link**, fill dummy answers,
+   copy the generated link. It contains `entry.123456` style IDs — those are
+   your three field IDs in order.
+3. In the linked responses Sheet: **File → Share → Publish to web →**
+   choose the sheet, format **CSV**, copy the link.
+4. Paste everything into `config.json` → `watchIntake`:
+   - `formAction`: the form URL, replacing `/viewform` with `/formResponse`
+   - `emailEntry` / `routeEntry` / `priceEntry`: `entry.XXXXXX` IDs in order
+   - `csvUrl`: the published CSV link
+5. Re-render (`render.ps1`) and publish. New signups now flow: website →
+   your Sheet → `watch-intake.ps1` (hourly) → `watches.json` → alert emails.
+
 ## Price-drop alerts (email or text) — GoWild fares only
 
 1. Copy `watches.example.json` to `watches.json` and edit. Each watch:
