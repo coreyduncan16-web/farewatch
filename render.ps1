@@ -103,6 +103,7 @@ foreach ($key in $hist.Keys) {
         hasGw = $false; g = -1.0; gc = 0; fc = 0; gn = 0
     }
     $lastObs = $obs[$obs.Count - 1]
+    $rec.u = [string]$lastObs.d
     if ($lastObs.ContainsKey('fc')) {
         $rec.hasGw = $true
         $rec.g  = [double]$lastObs.g
@@ -244,7 +245,7 @@ function GwRowHtml($r, [int]$i) {
         $bookCell = ('<a class="bookbtn dim" target="_blank" rel="noopener" href="{0}">check</a>' -f (BookUrl $r))
     }
     $tpl = @'
-      <tr class="row" style="animation-delay:{0}ms">
+      <tr class="row" data-o="{1}" style="animation-delay:{0}ms">
         <td><div class="route">{1} <span>&rarr;</span> {2}</div>
             <span class="where hide-sm">{3}</span></td>
         <td class="num">{4}
@@ -513,7 +514,9 @@ $searchHtml = @'
     <button id="sGo">SEARCH</button>
     <a class="live" id="sLive" href="#" target="_blank" rel="noopener">check live on flyfrontier.com &rarr;</a>
   </div>
+  <div id="sQueueNote"></div>
   <div id="sLiveRes"></div>
+  <div id="sFlex"></div>
   <div id="sResults"></div>
 </section>
 
@@ -537,6 +540,8 @@ $alertHtml = @'
       placeholder="MCO-PUJ" style="min-width:120px;text-transform:uppercase">
       <datalist id="routeList">__WROUTEOPTS__</datalist></label>
     <label>Alert at/under $<input type="number" id="wMax" value="90" min="20" max="500" style="min-width:84px"></label>
+    <label>Travel from<input type="date" id="wFrom"></label>
+    <label>Travel to<input type="date" id="wTo"></label>
     <button id="wGo">ALERT ME</button>
   </div>
   <p class="sub" id="wMsg"></p>
@@ -564,7 +569,7 @@ if ($cashRows.Count -eq 0) {
 if ($gwRows.Count -eq 0) {
     [void]$sb.Append('  <div class="empty">No departures inside the GoWild window yet &mdash; run a sweep first.</div>' + "`n")
 } else {
-    [void]$sb.Append('  <table><thead><tr><th>Route</th><th>Departs</th><th class="hide-sm">Cash</th><th>GoWild</th><th>Pass seats</th><th>Basis</th><th></th></tr></thead><tbody>' + "`n")
+    [void]$sb.Append('  <table id="gwtable"><thead><tr><th>Route</th><th>Departs</th><th class="hide-sm">Cash</th><th>GoWild</th><th>Pass seats</th><th>Basis</th><th></th></tr></thead><tbody>' + "`n")
     $i = 0
     foreach ($r in $gwRows) { [void]$sb.Append((GwRowHtml $r $i)); $i++ }
     [void]$sb.Append('  </tbody></table>' + "`n")
@@ -583,7 +588,7 @@ and seat assignments, which is where Frontier makes its money. Compare
 like for like before calling anything cheap.</p>
 </footer>
 <form name="watch" method="POST" action="/" netlify netlify-honeypot="bot-field" hidden>
-  <input name="email"><input name="route"><input name="maxprice"><input name="bot-field">
+  <input name="email"><input name="route"><input name="maxprice"><input name="datefrom"><input name="dateto"><input name="bot-field">
 </form>
 <form name="recheck" method="POST" action="/" netlify hidden>
   <input name="route"><input name="date">
@@ -596,7 +601,7 @@ foreach ($r in @($records | Sort-Object @{ Expression = { $_.key } })) {
     [void]$fwItems.Add(@{
         o = $r.o; d = $r.d; dep = $r.dep.ToString('yyyy-MM-dd')
         cash = [Math]::Round($r.cur, 2); g = [Math]::Round($r.g, 2)
-        gc = $r.gc; fc = $r.fc; sig = $r.sig
+        gc = $r.gc; fc = $r.fc; sig = $r.sig; u = $r.u
     })
 }
 $fwJson = '[]'
@@ -631,8 +636,10 @@ function submitWatch(){
   var em = el('wEmail').value.trim();
   var rt = el('wRoute').value.trim().toUpperCase();
   var mx = el('wMax').value;
+  var df = el('wFrom').value, dt = el('wTo').value;
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { el('wMsg').textContent = 'Please enter a valid email address.'; return; }
   if (!/^([A-Z]{3}-[A-Z]{3}|ANY)$/.test(rt)) { el('wMsg').textContent = 'Route must look like MCO-PUJ (airport codes), or ANY.'; return; }
+  if (df && dt && df > dt) { el('wMsg').textContent = 'Travel-from date is after travel-to date.'; return; }
   if (FWFORM.action) {
     var fd = new FormData();
     fd.append(FWFORM.emailEntry, em);
@@ -642,9 +649,11 @@ function submitWatch(){
     el('wMsg').textContent = 'You are on the list! ' + rt + ' will be checked hourly; one email lands when the GoWild total is $' + mx + ' or less.';
     el('wEmail').value = '';
   } else if (location.protocol !== 'file:') {
-    var params = 'form-name=watch&email=' + encodeURIComponent(em) + '&route=' + encodeURIComponent(rt) + '&maxprice=' + encodeURIComponent(mx);
+    var params = 'form-name=watch&email=' + encodeURIComponent(em) + '&route=' + encodeURIComponent(rt) + '&maxprice=' + encodeURIComponent(mx)
+      + '&datefrom=' + encodeURIComponent(df) + '&dateto=' + encodeURIComponent(dt);
+    var range = (df || dt) ? (' for travel ' + (df || 'now') + ' to ' + (dt || 'anytime')) : '';
     fetch('/', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params })
-      .then(function(){ el('wMsg').textContent = 'You are on the list! ' + rt + ' will be checked hourly; one email lands when the GoWild total is $' + mx + ' or less.'; el('wEmail').value = ''; })
+      .then(function(){ el('wMsg').textContent = 'You are on the list! ' + rt + range + ' - checked hourly; one email lands when the GoWild total is $' + mx + ' or less.'; el('wEmail').value = ''; })
       .catch(function(){ el('wMsg').textContent = 'Signup hiccup - try again in a minute.'; });
   } else {
     el('wMsg').textContent = 'Opening your email app - just hit send and you will be added.';
@@ -653,12 +662,79 @@ function submitWatch(){
       + '&body=' + encodeURIComponent('Please add me to FareWatch price alerts.\nEmail: ' + em + '\nRoute: ' + rt + '\nAlert at or under: $' + mx);
   }
 }
-function requestRecheck(o, d, ds){
-  var scope = ds ? ds : 'the next 10 days';
+// Auto-queue a fresh sweep for every search whose data is not from today.
+// Throttled per route per browser (6h) so casual clicking cannot flood the queue.
+function autoQueue(o, d, ds, pair){
+  if (location.protocol === 'file:') { return; }
+  var today = isoDate(new Date());
+  var fresh = pair.some(function(r){ return r.u === today && (!ds || r.dep === ds); });
+  if (fresh) { el('sQueueNote').innerHTML = ''; return; }
+  var key = 'fwq_' + o + d;
+  try {
+    var last = +localStorage.getItem(key) || 0;
+    if (Date.now() - last < 6 * 3600 * 1000) {
+      el('sQueueNote').innerHTML = '<p class="sub">Fresh sweep for ' + o + ' &rarr; ' + d + ' is already queued &mdash; prices update within the hour.</p>';
+      return;
+    }
+    localStorage.setItem(key, String(Date.now()));
+  } catch (e) { }
   var params = 'form-name=recheck&route=' + encodeURIComponent(o + '-' + d) + '&date=' + encodeURIComponent(ds || '');
   fetch('/', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params })
-    .then(function(){ el('sLiveRes').innerHTML = '<div class="empty">Queued! ' + o + ' &rarr; ' + d + ' (' + scope + ') gets swept within the hour &mdash; check back, or grab it right now with the flyfrontier.com link above.</div>'; })
-    .catch(function(){ el('sLiveRes').innerHTML = '<div class="empty">Could not queue the check - use the flyfrontier.com link above.</div>'; });
+    .then(function(){ el('sQueueNote').innerHTML = '<p class="sub">&#10003; Fresh sweep queued for ' + o + ' &rarr; ' + d + (ds ? ' on ' + ds : ' (next 10 days)') + ' &mdash; prices here update within the hour.</p>'; })
+    .catch(function(){ });
+}
+
+// Flexible dates: rank the next 10 days of this route from local lows to
+// local highs. Uses real GoWild fares where the booking window is open,
+// otherwise soft-cash as the forecast (soft cash = pass seats usually clear).
+function flexPanel(o, d, pair){
+  var todayIso = isoDate(new Date());
+  var limIso = isoDate(new Date(Date.now() + 10 * 864e5));
+  var days = pair.filter(function(r){ return r.dep >= todayIso && r.dep <= limIso; });
+  days.sort(function(a, b){ return a.dep < b.dep ? -1 : 1; });
+  var withGw = days.filter(function(r){ return r.gc > 0 && r.g > 0; });
+  var basis = withGw.length >= 2 ? 'gw' : 'cash';
+  var vals = [];
+  days.forEach(function(r){
+    r._v = basis === 'gw' ? ((r.gc > 0 && r.g > 0) ? r.g : null) : (r.cash > 0 ? r.cash : null);
+    if (r._v !== null) { vals.push(r._v); }
+  });
+  if (vals.length < 2) { el('sFlex').innerHTML = ''; return; }
+  var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+  var best = null;
+  days.forEach(function(r){ if (r._v !== null && (best === null || r._v < best._v)) { best = r; } });
+  var h = '<p class="sub"><strong>Flexible dates?</strong> Next 10 days of ' + o + ' &rarr; ' + d + ', ranked against this route&rsquo;s own local high/low'
+    + (basis === 'cash' ? ' <em>(forecast from cash-fare softness &mdash; domestic GoWild only opens 1 day out)</em>' : '') + ':</p>';
+  h += '<table><thead><tr><th>Date</th><th>' + (basis === 'gw' ? 'GoWild' : 'Cash') + '</th><th>Vs. local range</th><th></th></tr></thead><tbody>';
+  days.forEach(function(r){
+    var verdict = '<span class="delta">no data yet</span>';
+    if (r._v !== null) {
+      var pos = hi > lo ? (r._v - lo) / (hi - lo) : 0;
+      var word, cls;
+      if (pos <= 0.2) { word = 'LOW'; cls = 'BUY'; }
+      else if (pos <= 0.45) { word = 'GOOD'; cls = 'WATCH'; }
+      else if (pos <= 0.7) { word = 'MID'; cls = 'HOLD'; }
+      else { word = 'HIGH'; cls = 'SPIKE'; }
+      verdict = '<span class="sig ' + cls + '">' + word + '</span>';
+      if (best && r.dep === best.dep) { verdict += ' <span class="sig BUY">&#9733; BEST BET</span>'; }
+    }
+    h += '<tr class="row"><td class="num">' + r.dep + '</td>'
+      + '<td class="num">' + (r._v !== null ? money(r._v) : '&mdash;') + '</td>'
+      + '<td>' + verdict + '</td>'
+      + '<td><a class="rowbtn" target="_blank" rel="noopener" href="' + liveUrl(o, d, r.dep) + '">live</a></td></tr>';
+  });
+  h += '</tbody></table>';
+  el('sFlex').innerHTML = h;
+}
+
+// Float the searched departure airport to the top of the GoWild window table.
+function floatGwOrigin(o){
+  var tb = document.querySelector('#gwtable tbody');
+  if (!tb) { return; }
+  var rows = Array.prototype.slice.call(tb.rows);
+  var mine = rows.filter(function(r){ return r.getAttribute('data-o') === o; });
+  var rest = rows.filter(function(r){ return r.getAttribute('data-o') !== o; });
+  mine.concat(rest).forEach(function(r){ tb.appendChild(r); });
 }
 function cachedRowsHtml(rows){
   var h = '<table><thead><tr><th>Route</th><th>Departs</th><th class="hide-sm">Cash</th><th>GoWild</th><th>Pass seats</th><th></th></tr></thead><tbody>';
@@ -679,6 +755,9 @@ function doSearch(){
   var o = el('sFrom').value, d = el('sTo').value, ds = el('sDate').value, gwOnly = el('sGw').checked;
   liveFetch(o, d, ds);
   var pair = FW.filter(function(r){ return r.o === o && r.d === d && (!gwOnly || r.gc > 0); });
+  autoQueue(o, d, ds, pair);
+  flexPanel(o, d, pair);
+  floatGwOrigin(o);
   var rows = pair.filter(function(r){ return !ds || r.dep === ds; });
   rows.sort(function(a, b){
     var ag = a.gc > 0 ? a.g : 1e9, bg = b.gc > 0 ? b.g : 1e9;
@@ -700,9 +779,8 @@ function doSearch(){
       h += '<p class="sub">Nothing tracked for ' + o + ' &rarr; ' + d + (ds ? ' on ' + ds : '') + ' &mdash; here is the same route over the <strong>next 10 days</strong> instead:</p>' + cachedRowsHtml(sugg);
     } else {
       h += '<div class="empty">No swept data for ' + o + ' &rarr; ' + d + ' yet'
-        + (gwOnly ? ' with pass seats (try unchecking the box)' : '') + '. '
-        + '<button class="rowbtn" onclick="requestRecheck(\'' + o + '\',\'' + d + '\',\'\')">SCAN NEXT 10 DAYS</button>'
-        + ' queues a full sweep of this route (done within the hour) &mdash; or open it live with the flyfrontier.com link above.</div>';
+        + (gwOnly ? ' with pass seats (try unchecking the box)' : '')
+        + '. A fresh sweep of the next 10 days was queued automatically &mdash; check back within the hour, or open it live with the flyfrontier.com link above.</div>';
     }
   }
   el('sResults').innerHTML = h;
@@ -726,14 +804,11 @@ function liveFetch(o, d, ds){
     });
     var blocked = results.some(function(res){ return res.j && res.j.blocked; });
     if (failed || (blocked && !rows.length)) {
-      el('sLiveRes').innerHTML = '<div class="empty">Frontier blocks instant checks from cloud servers, so live data comes from the tracker&rsquo;s hourly sweeps instead. Want this exact route re-checked soon? '
-        + '<button class="rowbtn" onclick="requestRecheck(\'' + o + '\',\'' + d + '\',\'' + (ds || '') + '\')">REQUEST FRESH CHECK</button>'
-        + ' &mdash; or see it right now on the flyfrontier.com link above.</div>';
+      el('sLiveRes').innerHTML = '';
       return;
     }
     if (!rows.length) {
-      el('sLiveRes').innerHTML = '<p class="sub"><strong>LIVE</strong> &mdash; checked seconds ago:</p><div class="empty">No ' + o + ' &rarr; ' + d + ' flights on ' + dates.join(' or ') + ' &mdash; see other days for this route below, or '
-        + '<button class="rowbtn" onclick="requestRecheck(\'' + o + '\',\'' + d + '\',\'\')">SCAN NEXT 10 DAYS</button>.</div>';
+      el('sLiveRes').innerHTML = '<p class="sub"><strong>LIVE</strong> &mdash; checked seconds ago: no ' + o + ' &rarr; ' + d + ' flights on ' + dates.join(' or ') + ' &mdash; see other days for this route below.</p>';
       return;
     }
     rows.sort(function(a, b){

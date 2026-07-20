@@ -297,13 +297,26 @@ if ($Demo) {
                 }
                 foreach ($dt in $dates) {
                     if ($dt -lt $today -or ($dt - $today).Days -gt [int]$cfg.horizonDays) { continue }
-                    [void]$rcExtra.Add(@{
-                        key = ('{0}-{1}|{2}' -f $ro, $rdst, $dt.ToString('yyyy-MM-dd'))
-                        o = $ro; d = $rdst; dep = $dt; daysOut = ($dt - $today).Days
-                    })
+                    $rcKey = '{0}-{1}|{2}' -f $ro, $rdst, $dt.ToString('yyyy-MM-dd')
+                    # skip if already swept today - searches auto-queue now, so dedupe hard
+                    if ($hist.ContainsKey($rcKey)) {
+                        $rcObs = $hist[$rcKey]
+                        if ([string]$rcObs[$rcObs.Count - 1].d -eq $todayStr) { continue }
+                    }
+                    [void]$rcExtra.Add(@{ key = $rcKey; o = $ro; d = $rdst; dep = $dt; daysOut = ($dt - $today).Days })
                 }
             }
             Remove-Item $rcPath -Force
+            # keep the extras bounded even if lots of visitors search at once
+            $rcSeen = @{}
+            $rcDedup = New-Object System.Collections.ArrayList
+            foreach ($x in $rcExtra) {
+                if ($rcSeen.ContainsKey($x.key)) { continue }
+                $rcSeen[$x.key] = $true
+                [void]$rcDedup.Add($x)
+                if ($rcDedup.Count -ge 40) { break }
+            }
+            $rcExtra = $rcDedup
             if ($rcExtra.Count -gt 0) { Write-Output ('watch sweep: {0} website fresh-check request(s) first in line.' -f $rcExtra.Count) }
         }
 

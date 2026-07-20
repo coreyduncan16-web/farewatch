@@ -26,12 +26,15 @@ $list = New-Object System.Collections.ArrayList
 $seen = @{}
 foreach ($w in @($existing.watches)) {
     [void]$list.Add($w)
-    $key = ((@($w.to) -join ',') + '|' + $w.route).ToLower()
+    $df = ''; $dt = ''
+    if ($w.PSObject.Properties['dateFrom']) { $df = [string]$w.dateFrom }
+    if ($w.PSObject.Properties['dateTo']) { $dt = [string]$w.dateTo }
+    $key = ((@($w.to) -join ',') + '|' + $w.route + '|' + $df + '|' + $dt).ToLower()
     $seen[$key] = $true
 }
 
 $added = 0
-function Add-Watch([string]$email, [string]$route, [string]$maxRaw) {
+function Add-Watch([string]$email, [string]$route, [string]$maxRaw, [string]$dateFrom = '', [string]$dateTo = '') {
     $email = $email.Trim(); $route = $route.Trim().ToUpper()
     if ($email -notmatch '^[^@\s]+@[^@\s]+\.[^@\s]+$') { return }
     if ($route -ne 'ANY' -and $route -notmatch '^[A-Z]{3}-[A-Z]{3}$') { return }
@@ -40,10 +43,15 @@ function Add-Watch([string]$email, [string]$route, [string]$maxRaw) {
     if ($maxRaw -ne '') {
         try { $maxGw = [Math]::Max(20.0, [Math]::Min(500.0, [double]$maxRaw)) } catch { }
     }
-    $key = ($email + '|' + $route).ToLower()
+    if ($dateFrom -notmatch '^\d{4}-\d{2}-\d{2}$') { $dateFrom = '' }
+    if ($dateTo -notmatch '^\d{4}-\d{2}-\d{2}$') { $dateTo = '' }
+    $key = ($email + '|' + $route + '|' + $dateFrom + '|' + $dateTo).ToLower()
     if ($seen.ContainsKey($key)) { return }
     $seen[$key] = $true
-    [void]$list.Add(@{ route = $route; maxGw = $maxGw; to = @($email); source = 'website'; added = (Get-Date -Format 'yyyy-MM-dd') })
+    $w = @{ route = $route; maxGw = $maxGw; to = @($email); source = 'website'; added = (Get-Date -Format 'yyyy-MM-dd') }
+    if ($dateFrom -ne '') { $w.dateFrom = $dateFrom }
+    if ($dateTo -ne '') { $w.dateTo = $dateTo }
+    [void]$list.Add($w)
     $script:added++
 }
 
@@ -57,7 +65,10 @@ if ($nToken -and $nSite) {
         foreach ($s in $subs) {
             $formName = [string]$s.form_name
             if ($formName -eq 'watch') {
-                Add-Watch ([string]$s.data.email) ([string]$s.data.route) ([string]$s.data.maxprice)
+                $df = ''; $dt = ''
+                if ($s.data.PSObject.Properties['datefrom']) { $df = [string]$s.data.datefrom }
+                if ($s.data.PSObject.Properties['dateto']) { $dt = [string]$s.data.dateto }
+                Add-Watch ([string]$s.data.email) ([string]$s.data.route) ([string]$s.data.maxprice) $df $dt
             } elseif ($formName -eq 'recheck') {
                 $rt = ([string]$s.data.route).Trim().ToUpper()
                 if ($rt -match '^[A-Z]{3}-[A-Z]{3}$') {

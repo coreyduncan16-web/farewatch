@@ -18,10 +18,34 @@
 # Windows PowerShell 5.1 compatible. Keep this file ASCII-only.
 
 [CmdletBinding()]
-param([switch]$Test)
+param([switch]$Test, [switch]$TestEmail)
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'common.ps1')
+
+# .\alerts.ps1 -TestEmail  ->  sends one test message so you know SMTP works
+if ($TestEmail) {
+    $secrets = Read-FwEnv
+    if (-not ($secrets['SMTP_HOST'] -and $secrets['SMTP_USER'] -and $secrets['SMTP_PASS'] -and $secrets['SMTP_FROM'])) {
+        Write-Output 'TEST FAILED: SMTP settings missing from .env (need SMTP_HOST, SMTP_USER, SMTP_PASS, SMTP_FROM - see .env.example).'
+        return
+    }
+    $port = 587
+    if ($secrets['SMTP_PORT']) { $port = [int]$secrets['SMTP_PORT'] }
+    $sec = ConvertTo-SecureString $secrets['SMTP_PASS'] -AsPlainText -Force
+    $cred = New-Object System.Management.Automation.PSCredential($secrets['SMTP_USER'], $sec)
+    try {
+        Send-MailMessage -SmtpServer $secrets['SMTP_HOST'] -Port $port -UseSsl -Credential $cred `
+            -From $secrets['SMTP_FROM'] -To $secrets['SMTP_FROM'] `
+            -Subject 'FareWatch test - your alerts are working' `
+            -Body 'This is the FareWatch email test. If you are reading this, price alerts will send just fine.'
+        Write-Output ('TEST PASSED: test email sent to {0} - check the inbox.' -f $secrets['SMTP_FROM'])
+    } catch {
+        Write-Output ('TEST FAILED: ' + $_.Exception.Message)
+        Write-Output 'Gmail users: make sure SMTP_PASS is an App Password (myaccount.google.com/apppasswords), not your normal password.'
+    }
+    return
+}
 
 $watchPath = Get-FwPath 'watches.json'
 if (-not (Test-Path $watchPath)) { Write-Output 'alerts: no watches.json, nothing to do.'; return }
@@ -84,8 +108,14 @@ foreach ($w in $watches) {
     $wRoute = ([string]$w.route).ToUpper()
     $hasMax = ($null -ne $w.PSObject.Properties['maxGw'] -and $null -ne $w.maxGw)
     $hasDrop = ($null -ne $w.PSObject.Properties['dropPct'] -and $null -ne $w.dropPct)
+    $wFrom = ''; $wTo = ''
+    if ($w.PSObject.Properties['dateFrom']) { $wFrom = [string]$w.dateFrom }
+    if ($w.PSObject.Properties['dateTo']) { $wTo = [string]$w.dateTo }
     foreach ($c in $cands) {
         if ($wRoute -ne 'ANY' -and $wRoute -ne $c.route) { continue }
+        # only alert on departures inside the watcher's travel date range
+        if ($wFrom -ne '' -and $c.depStr -lt $wFrom) { continue }
+        if ($wTo -ne '' -and $c.depStr -gt $wTo) { continue }
         $reasons = @()
         if ($hasMax -and $c.g -le [double]$w.maxGw) {
             $reasons += ('at/under your ${0} cap' -f [double]$w.maxGw)
@@ -130,10 +160,15 @@ foreach ($toKey in $queued.Keys) {
         if ($secrets['SMTP_PORT']) { $port = [int]$secrets['SMTP_PORT'] }
         $sec = ConvertTo-SecureString $secrets['SMTP_PASS'] -AsPlainText -Force
         $cred = New-Object System.Management.Automation.PSCredential($secrets['SMTP_USER'], $sec)
-        Send-MailMessage -SmtpServer $secrets['SMTP_HOST'] -Port $port -UseSsl `
-            -Credential $cred -From $secrets['SMTP_FROM'] -To $queuedTo[$toKey] `
-            -Subject $subject -Body $body
-        Write-Output ('alerts: sent to {0}' -f $toKey)
+        try {
+            Send-MailMessage -SmtpServer $secrets['SMTP_HOST'] -Port $port -UseSsl `
+                -Credential $cred -From $secrets['SMTP_FROM'] -To $queuedTo[$toKey] `
+                -Subject $subject -Body $body
+            Write-Output ('alerts: sent to {0}' -f $toKey)
+        } catch {
+            Write-Output ('alerts: SEND FAILED to {0}: {1}' -f $toKey, $_.Exception.Message)
+            Add-Content -Path (Get-FwPath 'data\alerts-log.txt') -Value ("[{0}] SEND FAILED to={1}: {2}`r`n{3}`r`n" -f (Get-Date), $toKey, $_.Exception.Message, $body) -Encoding UTF8
+        }
     }
 }
 
