@@ -11,6 +11,7 @@
   "watchPct": 35,
   "spikePct": 85,
   "minObservations": 5,
+  "minRefreshHours": 1,
   "apiMonthlyBudget": 3720,
   "apiCallsPerRun": 120,
   "cashTableRows": 22,

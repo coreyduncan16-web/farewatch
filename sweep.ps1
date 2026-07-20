@@ -26,6 +26,12 @@ $today   = (Get-Date).Date
 $todayStr = $today.ToString('yyyy-MM-dd')
 if ($Provider -eq '') { $Provider = [string]$cfg.provider }
 
+# How long a route-date's price stays "fresh" before it is eligible to be
+# re-swept. Lower this (e.g. 1) to let hourly runs refresh prices intra-day;
+# leave it near 24 for a once-a-day sweep. Absent from older configs -> 20h.
+$minRefreshHours = 20.0
+if ($cfg.PSObject.Properties['minRefreshHours']) { $minRefreshHours = [double]$cfg.minRefreshHours }
+
 # ---------------------------------------------------------------- providers --
 
 $script:AmadeusToken = $null
@@ -256,29 +262,48 @@ if ($Demo) {
     Write-Output 'Demo history written.'
 } else {
     $usage = Read-FwUsage
-    $monthlyRemaining = [int]$cfg.apiMonthlyBudget - [int]$usage.calls
     $budget = [int]$cfg.apiCallsPerRun
     if ($MaxCalls -gt 0) { $budget = $MaxCalls }
-    if ($budget -gt $monthlyRemaining) { $budget = $monthlyRemaining }
-    if ($budget -le 0) {
-        Write-Output ('Monthly API budget exhausted ({0}/{1}). Rendering from existing history only.' -f $usage.calls, $cfg.apiMonthlyBudget)
+    # The frontier provider scrapes the public site (no paid quota), so only the
+    # per-run cap and frontierSleepMs throttle it - the monthly budget would
+    # otherwise choke off hourly refreshes after roughly a day. Paid API
+    # providers still honour the monthly budget.
+    if ($Provider -ne 'frontier') {
+        $monthlyRemaining = [int]$cfg.apiMonthlyBudget - [int]$usage.calls
+        if ($budget -gt $monthlyRemaining) { $budget = $monthlyRemaining }
+        if ($budget -le 0) {
+            Write-Output ('Monthly API budget exhausted ({0}/{1}). Rendering from existing history only.' -f $usage.calls, $cfg.apiMonthlyBudget)
+        }
     }
 
     # Prioritise: stalest first, with big bonuses for the GoWild window and
     # for imminent departures / the release-day edge.
     $window = [int]$cfg.goWildWindowDays
+    $nowLocal = Get-Date
     $candidates = New-Object System.Collections.ArrayList
     foreach ($rd in $universe) {
-        $stale = 999
+        # Hours since this route-date was last priced. Never-seen route-dates
+        # sort to the very top; the 't' timestamp (added below) gives intra-day
+        # resolution, older date-only records fall back to that day's midnight.
+        $staleHours = 1000000.0
         if ($hist.ContainsKey($rd.key)) {
             $obs = $hist[$rd.key]
-            $last = [datetime]::ParseExact([string]$obs[$obs.Count - 1].d, 'yyyy-MM-dd', $null)
-            $stale = ($today - $last).Days
+            if ($obs.Count -gt 0) {
+                $last = $obs[$obs.Count - 1]
+                $lastTime = $null
+                if ($last.ContainsKey('t') -and [string]$last.t -ne '') {
+                    try { $lastTime = ([datetimeoffset]::Parse([string]$last.t, $script:FwInv)).LocalDateTime } catch { $lastTime = $null }
+                }
+                if ($null -eq $lastTime) {
+                    try { $lastTime = [datetime]::ParseExact([string]$last.d, 'yyyy-MM-dd', $null) } catch { $lastTime = $null }
+                }
+                if ($null -ne $lastTime) { $staleHours = ($nowLocal - $lastTime).TotalHours }
+            }
         }
-        if ($stale -lt 1) { continue }   # already swept today
-        $score = [double]$stale
-        if ($rd.daysOut -le $window) { $score += 50 }
-        if ($rd.daysOut -le 2 -or $rd.daysOut -eq $window) { $score += 25 }
+        if ($staleHours -lt $minRefreshHours) { continue }   # refreshed recently enough
+        $score = $staleHours
+        if ($rd.daysOut -le $window) { $score += 500 }
+        if ($rd.daysOut -le 2 -or $rd.daysOut -eq $window) { $score += 250 }
         $rd.score = $score
         [void]$candidates.Add($rd)
     }
@@ -292,6 +317,7 @@ if ($Demo) {
         $usage.calls = [int]$usage.calls + 1
         if ($null -ne $newObs) {
             $newObs.d = $todayStr
+            $newObs.t = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
             if (-not $hist.ContainsKey($rd.key)) { $hist[$rd.key] = New-Object System.Collections.ArrayList }
             $obs = $hist[$rd.key]
             # replace any same-day observation

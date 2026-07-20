@@ -73,15 +73,28 @@ first real sweep to clear the demo data.
 powershell -ExecutionPolicy Bypass -File .\sweep.ps1
 ```
 
-Each run spends at most `apiCallsPerRun` calls (default 120) from the
-`apiMonthlyBudget` (default 3720), prioritizing: stalest route-dates first,
-with big boosts for departures inside the GoWild window, imminent departures,
-and dates that just entered the window. Usage is tracked per calendar month in
-`data\usage.json` and shown in the dashboard header.
+Each run spends at most `apiCallsPerRun` calls (default 120), prioritizing:
+stalest route-dates first, with big boosts for departures inside the GoWild
+window, imminent departures, and dates that just entered the window. For the
+paid API providers this also draws down the `apiMonthlyBudget` (default 3720),
+tracked per calendar month in `data\usage.json`; the free `frontier` provider
+scrapes the public site and is capped only by `apiCallsPerRun` and
+`frontierSleepMs`.
+
+A route-date is only re-priced once it is at least `minRefreshHours` old
+(default 1). Every observation is stamped with the exact time it was priced, so
+re-running the sweep during the day actually refreshes prices instead of
+skipping anything already seen today — set `minRefreshHours` higher for a
+lighter once-a-day cadence.
 
 To automate it, run `register-schedule.ps1` once — it creates a Windows
 Scheduled Task ("FareWatch daily sweep", 07:30 local by default) that runs
-`run-daily.ps1`: sweep → render → alerts → publish to the website.
+`run-daily.ps1`: sweep → render → alerts → publish to the website. To refresh
+prices through the day, pass `-EveryHours 1` (pairs with `minRefreshHours`):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\register-schedule.ps1 -EveryHours 1
+```
 
 ## Trip planner ("get me there under $X")
 

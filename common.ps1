@@ -45,6 +45,7 @@ function Read-FwHistory {
             $list = New-Object System.Collections.ArrayList
             foreach ($o in @($prop.Value)) {
                 $rec = @{ d = [string]$o.d; p = [double]$o.p }
+                if ($o.PSObject.Properties['t']) { $rec.t = [string]$o.t }
                 if ($o.PSObject.Properties['g']) {
                     $rec.g  = [double]$o.g
                     $rec.gc = [int]$o.gc
