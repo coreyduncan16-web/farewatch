@@ -83,6 +83,24 @@ To automate it, run `register-schedule.ps1` once — it creates a Windows
 Scheduled Task ("FareWatch daily sweep", 07:30 local by default) that runs
 `run-daily.ps1`: sweep → render → alerts → publish to the website.
 
+## The full network + the $16 lab
+
+- `network-discover.ps1` pulls Frontier's entire network from their own
+  booking page into `data\network.json`: ~117 stations, ~6,200 bookable
+  route pairs, plus Frontier's metro groups (nearby-airport clusters).
+  Re-run it every month or so. The site's search dropdowns, the planner's
+  hub-finding, and `-Nearby` all feed off it.
+- `lab.ps1` is the **$16-fare study**: every hourly run logs every flight on
+  the `labRoutes` (config) departing within ~36 hours — GoWild price vs.
+  hours-to-takeoff. Run `lab.ps1 -Report` anytime to see, by hour bucket,
+  how often pass seats exist, the median GoWild price, and how often it is
+  at the ~$16-20 tax floor — plus, once flights get tracked across several
+  hours, the median hours-before-takeoff at which fares first drop to the
+  floor. That's the release pattern, measured instead of guessed. Domestic
+  GoWild fares bottom out around $15-16 (the $0.01 fare + government
+  taxes/fees); Frontier prices above that dynamically until they want the
+  seat gone. Set `labRoutes` to `[]` to stop collecting.
+
 ## Trip planner ("get me there under $X")
 
 Tell Claude something like *"get me from ATL to MBJ Tuesday for under
@@ -92,12 +110,14 @@ $150"* — or run it yourself:
 powershell -ExecutionPolicy Bypass -File .\plan.ps1 -From ATL -To MBJ -Date 2026-07-21 -Budget 150
 ```
 
-It prices the direct flight plus "airport hopping" self-connects through
-Frontier hubs (`hubs` in config.json), using the GoWild fare on any leg with
-pass seats and cash otherwise. Options: `-Hubs MCO,DEN` to limit the search,
-`-MinConnectMinutes 120`, `-NoOvernight`. **Each hop is a separate booking:**
-if leg 1 is late, leg 2 does not wait and owes you nothing — leave generous
-connections.
+It prices the direct flight plus "airport hopping" self-connects, picking
+hub candidates automatically from the full network (airports Frontier sells
+from BOTH ends, biggest bases first). GoWild fare on any leg with pass
+seats, cash otherwise. Options: `-Nearby` also tries the destination's
+metro-group neighbors (e.g. CLT also checks MYR/ORF/RDU/RIC/TYS);
+`-MaxHubs 5` / `-Hubs MCO,DEN` to bound the search; `-MinConnectMinutes 120`;
+`-NoOvernight`. **Each hop is a separate booking:** if leg 1 is late, leg 2
+does not wait and owes you nothing — leave generous connections.
 
 ## Search bar
 

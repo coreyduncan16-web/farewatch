@@ -15,9 +15,11 @@ param(
     [double]$Budget = 0,
     [string]$Date = '',
     [string]$Hubs = '',
+    [int]$MaxHubs = 10,
     [int]$MaxOptions = 5,
     [int]$MinConnectMinutes = 90,
-    [switch]$NoOvernight
+    [switch]$NoOvernight,
+    [switch]$Nearby
 )
 
 $ErrorActionPreference = 'Stop'
@@ -29,9 +31,39 @@ $To   = $To.Trim().ToUpper()
 $dep  = (Get-Date).Date.AddDays(1)
 if ($Date -ne '') { $dep = ([datetime]::Parse($Date)).Date }
 
-$hubList = @($cfg.hubs)
-if ($Hubs -ne '') { $hubList = @($Hubs.Split(',') | ForEach-Object { $_.Trim().ToUpper() }) }
-$hubList = @($hubList | Where-Object { $_ -ne $From -and $_ -ne $To })
+# Full Frontier network (run network-discover.ps1 to refresh)
+$net = $null
+$netPath = Get-FwPath 'data\network.json'
+if (Test-Path $netPath) { $net = Get-Content -Raw -Encoding UTF8 $netPath | ConvertFrom-Json }
+
+# Destination set: the target, plus its Frontier metro-group neighbors
+# with -Nearby (e.g. CLT also tries MYR/ORF/RDU/RIC/TYS).
+$targets = @($To)
+if ($Nearby -and $null -ne $net -and $null -ne $net.stations.$To) {
+    foreach ($m in @($net.stations.$To.mates)) {
+        if ($m -ne $From -and $targets -notcontains $m) { $targets += $m }
+    }
+    if ($targets.Count -gt 1) {
+        Write-Output ('Nearby airports included: {0}' -f (($targets | Select-Object -Skip 1) -join ', '))
+    }
+}
+
+# Hub candidates: airports Frontier sells from BOTH ends, biggest bases first.
+$hubPriority = @('DEN','LAS','MCO','PHX','ATL','DFW','CLE','PHL','MIA','ORD','BWI','SJU','TTN','ISP','SLC','MSY','TPA','FLL','SAN','ONT')
+function HubsFor([string]$origin, [string]$dest) {
+    if ($Hubs -ne '') { return @($Hubs.Split(',') | ForEach-Object { $_.Trim().ToUpper() } | Where-Object { $_ -ne $origin -and $_ -ne $dest }) }
+    if ($null -eq $net) { return @($cfg.hubs | Where-Object { $_ -ne $origin -and $_ -ne $dest }) }
+    $fromSt = $net.stations.$origin
+    if ($null -eq $fromSt) { return @() }
+    $cand = @()
+    foreach ($m in @($fromSt.markets)) {
+        if ($m -eq $origin -or $m -eq $dest) { continue }
+        $midSt = $net.stations.$m
+        if ($null -ne $midSt -and (@($midSt.markets) -contains $dest)) { $cand += $m }
+    }
+    $ranked = @($cand | Sort-Object { $i = [array]::IndexOf($hubPriority, $_); if ($i -lt 0) { 999 } else { $i } })
+    @($ranked | Select-Object -First $MaxHubs)
+}
 
 $script:CallCount = 0
 $legCache = @{}
@@ -60,39 +92,44 @@ function LegFlights([string]$o, [string]$d, [datetime]$day) {
     $result
 }
 
-Write-Output ('Planning {0} -> {1} on {2}' -f $From, $To, $dep.ToString('ddd MMM d, yyyy'))
+Write-Output ('Planning {0} -> {1} on {2}' -f $From, ($targets -join '/'), $dep.ToString('ddd MMM d, yyyy'))
 if ($Budget -gt 0) { Write-Output ('Budget: ${0}' -f $Budget) }
-Write-Output ('Checking direct + self-connects via: {0}' -f ($hubList -join ', '))
 Write-Output ''
 
 $itins = New-Object System.Collections.ArrayList
 
-# direct
-$direct = LegFlights $From $To $dep
-if ($direct) {
-    foreach ($f in $direct) {
-        [void]$itins.Add(@{ total = [double]$f.eff; legs = @(@{ o = $From; d = $To; f = $f }) })
-    }
-}
-
-# one hop
-foreach ($h in $hubList) {
+foreach ($tgt in $targets) {
     if ($script:FwBlocked) { break }
-    $l1 = LegFlights $From $h $dep
-    if (-not $l1) { continue }
-    $sameDayCombos = 0
-    foreach ($dayOffset in @(0, 1)) {
-        if ($dayOffset -eq 1 -and ($NoOvernight -or $sameDayCombos -gt 0)) { break }
-        $l2 = LegFlights $h $To ($dep.AddDays($dayOffset))
-        if (-not $l2) { continue }
-        foreach ($f1 in $l1) {
-            foreach ($f2 in $l2) {
-                if ($f2.depTime -lt $f1.arrTime.AddMinutes($MinConnectMinutes)) { continue }
-                [void]$itins.Add(@{
-                    total = [double]$f1.eff + [double]$f2.eff
-                    legs  = @(@{ o = $From; d = $h; f = $f1 }, @{ o = $h; d = $To; f = $f2 })
-                })
-                if ($dayOffset -eq 0) { $sameDayCombos++ }
+    $hubList = HubsFor $From $tgt
+    Write-Output ('{0} -> {1}: direct + self-connects via {2}' -f $From, $tgt, ($hubList -join ', '))
+
+    # direct
+    $direct = LegFlights $From $tgt $dep
+    if ($direct) {
+        foreach ($f in $direct) {
+            [void]$itins.Add(@{ total = [double]$f.eff; legs = @(@{ o = $From; d = $tgt; f = $f }) })
+        }
+    }
+
+    # one hop
+    foreach ($h in $hubList) {
+        if ($script:FwBlocked) { break }
+        $l1 = LegFlights $From $h $dep
+        if (-not $l1) { continue }
+        $sameDayCombos = 0
+        foreach ($dayOffset in @(0, 1)) {
+            if ($dayOffset -eq 1 -and ($NoOvernight -or $sameDayCombos -gt 0)) { break }
+            $l2 = LegFlights $h $tgt ($dep.AddDays($dayOffset))
+            if (-not $l2) { continue }
+            foreach ($f1 in $l1) {
+                foreach ($f2 in $l2) {
+                    if ($f2.depTime -lt $f1.arrTime.AddMinutes($MinConnectMinutes)) { continue }
+                    [void]$itins.Add(@{
+                        total = [double]$f1.eff + [double]$f2.eff
+                        legs  = @(@{ o = $From; d = $h; f = $f1 }, @{ o = $h; d = $tgt; f = $f2 })
+                    })
+                    if ($dayOffset -eq 0) { $sameDayCombos++ }
+                }
             }
         }
     }

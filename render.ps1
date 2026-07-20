@@ -453,14 +453,39 @@ today sits inside the range this route-date has actually traded in.</p>
 [void]$sb.Append('</div>' + "`n`n")
 
 # search section (client-side, works on static hosting)
-$fromCodes = @($records | ForEach-Object { $_.o } | Sort-Object -Unique)
-if ($fromCodes.Count -eq 0) { $fromCodes = @($cfg.origins) }
-$toCodes = @($records | ForEach-Object { $_.d } | Sort-Object -Unique)
-if ($toCodes.Count -eq 0) { $toCodes = @($cfg.destinations) }
-$fromOpts = ''
-foreach ($c in $fromCodes) { $fromOpts += ('<option value="{0}">{0} - {1}</option>' -f $c, (CityOf $c)) }
-$toOpts = ''
-foreach ($c in $toCodes) { $toOpts += ('<option value="{0}">{0} - {1}</option>' -f $c, (CityOf $c)) }
+# Use the full Frontier network when data\network.json exists (117 airports),
+# otherwise fall back to the tracked routes.
+$net = $null
+$netPath = Get-FwPath 'data\network.json'
+if (Test-Path $netPath) { $net = Get-Content -Raw -Encoding UTF8 $netPath | ConvertFrom-Json }
+
+$fromOpts = ''; $toOpts = ''
+if ($null -ne $net) {
+    $codes = @($net.stations.PSObject.Properties.Name | Where-Object {
+        @($net.stations.$_.markets).Count -gt 0
+    })
+    $sorted = @($codes | Sort-Object { [string]$net.stations.$_.name })
+    foreach ($c in $sorted) {
+        $st = $net.stations.$c
+        $label = '{0} - {1}' -f $c, $st.name
+        if ([string]$st.state -ne '') { $label += ', ' + $st.state }
+        $optHtml = ('<option value="{0}"' -f $c)
+        if ($c -eq 'ATL') { $optHtml += ' selected' }
+        $optHtml += ('>{0}</option>' -f $label)
+        $fromOpts += $optHtml
+        $toOptHtml = ('<option value="{0}"' -f $c)
+        if ($c -eq 'CUN') { $toOptHtml += ' selected' }
+        $toOptHtml += ('>{0}</option>' -f $label)
+        $toOpts += $toOptHtml
+    }
+} else {
+    $fromCodes = @($records | ForEach-Object { $_.o } | Sort-Object -Unique)
+    if ($fromCodes.Count -eq 0) { $fromCodes = @($cfg.origins) }
+    $toCodes = @($records | ForEach-Object { $_.d } | Sort-Object -Unique)
+    if ($toCodes.Count -eq 0) { $toCodes = @($cfg.destinations) }
+    foreach ($c in $fromCodes) { $fromOpts += ('<option value="{0}">{0} - {1}</option>' -f $c, (CityOf $c)) }
+    foreach ($c in $toCodes) { $toOpts += ('<option value="{0}">{0} - {1}</option>' -f $c, (CityOf $c)) }
+}
 
 $searchHtml = @'
 <section id="searchsec">
@@ -496,7 +521,9 @@ $alertHtml = @'
   GoWild all-in price hits your number. No account, no spam, GoWild fares only.</p>
   <div class="searchbar">
     <label>Email<input type="email" id="wEmail" placeholder="you@email.com" style="min-width:230px"></label>
-    <label>Route<select id="wRoute">__WROUTEOPTS__</select></label>
+    <label>Route (or ANY)<input id="wRoute" list="routeList" value="ANY"
+      placeholder="MCO-PUJ" style="min-width:120px;text-transform:uppercase">
+      <datalist id="routeList">__WROUTEOPTS__</datalist></label>
     <label>Alert at/under $<input type="number" id="wMax" value="90" min="20" max="500" style="min-width:84px"></label>
     <button id="wGo">ALERT ME</button>
   </div>
@@ -571,18 +598,17 @@ function liveUrl(o, d, ds){
 }
 function updLive(){ el('sLive').href = liveUrl(el('sFrom').value, el('sTo').value, el('sDate').value); }
 function showWatch(o, d, g){
-  var sel = el('wRoute');
-  var val = o + '-' + d;
-  for (var i = 0; i < sel.options.length; i++) { if (sel.options[i].value === val) { sel.value = val; break; } }
+  el('wRoute').value = o + '-' + d;
   el('wMax').value = Math.max(20, Math.ceil(g));
   document.getElementById('alertsec').scrollIntoView({ behavior: 'smooth' });
   el('wEmail').focus();
 }
 function submitWatch(){
   var em = el('wEmail').value.trim();
-  var rt = el('wRoute').value;
+  var rt = el('wRoute').value.trim().toUpperCase();
   var mx = el('wMax').value;
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { el('wMsg').textContent = 'Please enter a valid email address.'; return; }
+  if (!/^([A-Z]{3}-[A-Z]{3}|ANY)$/.test(rt)) { el('wMsg').textContent = 'Route must look like MCO-PUJ (airport codes), or ANY.'; return; }
   if (FWFORM.action) {
     var fd = new FormData();
     fd.append(FWFORM.emailEntry, em);
