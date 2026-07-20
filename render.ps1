@@ -204,6 +204,12 @@ function CashRowHtml($r, [int]$i) {
         ([Math]::Max(1, $r.pct)), $r.sig, $r.why
 }
 
+function BookUrl($r) {
+    $MONTHS = @('Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec')
+    $dd = [uri]::EscapeDataString(('{0} {1}, {2}' -f $MONTHS[$r.dep.Month - 1], $r.dep.Day, $r.dep.Year))
+    'https://booking.flyfrontier.com/Flight/InternalSelect?s=true&o1={0}&d1={1}&dd1={2}&ADT=1&mon=true' -f $r.o, $r.d, $dd
+}
+
 function GwRowHtml($r, [int]$i) {
     # GoWild fare cell + seats cell
     if ($r.hasGw) {
@@ -228,6 +234,11 @@ function GwRowHtml($r, [int]$i) {
         if ($p -le $filled) { $pips += ('<i class="pip {0}"></i>' -f $pipCls) }
         else { $pips += '<i class="pip"></i>' }
     }
+    if ($r.hasGw -and $r.gc -gt 0) {
+        $bookCell = ('<a class="bookbtn" target="_blank" rel="noopener" href="{0}">BOOK &rarr;</a>' -f (BookUrl $r))
+    } else {
+        $bookCell = ('<a class="bookbtn dim" target="_blank" rel="noopener" href="{0}">check</a>' -f (BookUrl $r))
+    }
     $tpl = @'
       <tr class="row" style="animation-delay:{0}ms">
         <td><div class="route">{1} <span>&rarr;</span> {2}</div>
@@ -238,11 +249,12 @@ function GwRowHtml($r, [int]$i) {
         <td class="num">{7}</td>
         <td><div class="score"><span class="pips">{8}</span><span class="num">{9}</span></div></td>
         <td><div class="why">{10}</div></td>
+        <td>{11}</td>
       </tr>
 '@
     $tpl -f ($i * 14), $r.o, $r.d, (PlaceOf $r.d),
         $r.dep.ToString('MMM d', $inv), $r.daysOut,
-        ([int][Math]::Round($r.cur)), $gwCell, $pips, $seatsNum, $r.gwBasis
+        ([int][Math]::Round($r.cur)), $gwCell, $pips, $seatsNum, $r.gwBasis, $bookCell
 }
 
 # ------------------------------------------------------------------ assemble --
@@ -394,6 +406,13 @@ tr.row{opacity:0;animation:in .34s ease forwards}
   padding:3px 8px;border:1px solid var(--rule);background:var(--panel);
   color:var(--dim);cursor:pointer;text-decoration:none;display:inline-block}
 .rowbtn:hover{border-color:var(--buy);color:var(--buy)}
+.bookbtn{font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;
+  letter-spacing:.09em;padding:7px 14px;border:1px solid var(--buy);
+  background:var(--buy);color:#fff;text-decoration:none;display:inline-block;
+  white-space:nowrap}
+.bookbtn:hover{opacity:.88}
+.bookbtn.dim{background:var(--panel);color:var(--dim);border-color:var(--rule)}
+.bookbtn.dim:hover{color:var(--buy);border-color:var(--buy);opacity:1}
 footer{margin-top:40px;padding-top:16px;border-top:1px solid var(--rule);
   font-size:12px;color:var(--dim);max-width:74ch}
 footer b{color:var(--ink);font-weight:600}
@@ -506,7 +525,7 @@ if ($cashRows.Count -eq 0) {
 if ($gwRows.Count -eq 0) {
     [void]$sb.Append('  <div class="empty">No departures inside the GoWild window yet &mdash; run a sweep first.</div>' + "`n")
 } else {
-    [void]$sb.Append('  <table><thead><tr><th>Route</th><th>Departs</th><th class="hide-sm">Cash</th><th>GoWild</th><th>Pass seats</th><th>Basis</th></tr></thead><tbody>' + "`n")
+    [void]$sb.Append('  <table><thead><tr><th>Route</th><th>Departs</th><th class="hide-sm">Cash</th><th>GoWild</th><th>Pass seats</th><th>Basis</th><th></th></tr></thead><tbody>' + "`n")
     $i = 0
     foreach ($r in $gwRows) { [void]$sb.Append((GwRowHtml $r $i)); $i++ }
     [void]$sb.Append('  </tbody></table>' + "`n")
