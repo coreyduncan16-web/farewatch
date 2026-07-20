@@ -129,7 +129,11 @@ if ($cashHeldBack -lt 0) { $cashHeldBack = 0 }
 
 $window = [int]$cfg.goWildWindowDays
 $gwPool = New-Object System.Collections.ArrayList
-foreach ($r in @($records | Where-Object { $_.daysOut -le $window })) {
+foreach ($r in $records) {
+    # each route's own booking window per the GoWild terms:
+    # domestic = 1 day before departure, international = 10 days
+    $rw = Get-FwGoWildWindow $cfg $r.o $r.d
+    if ($r.daysOut -gt $rw) { continue }
     $basis = New-Object System.Collections.ArrayList
     if ($r.hasGw) {
         # Real GoWild data straight from Frontier's booking site.
@@ -142,8 +146,8 @@ foreach ($r in @($records | Where-Object { $_.daysOut -le $window })) {
             $r.gwGroup = 1; $r.gwSort = $r.daysOut
             [void]$basis.Add(('no pass seats across {0} flights at last sweep' -f $r.fc))
         }
-        if ($r.daysOut -le 2) { [void]$basis.Add(('{0}d out &mdash; seats can still clear' -f $r.daysOut)) }
-        elseif ($r.daysOut -eq $window) { [void]$basis.Add('just entered the window') }
+        if ($r.daysOut -le 1) { [void]$basis.Add(('{0}d out &mdash; seats can still clear' -f $r.daysOut)) }
+        elseif ($r.daysOut -eq $rw) { [void]$basis.Add('just entered the window') }
         $r.gwScore = -1
     } else {
         # No sweep data yet for this date: fall back to the proxy score.
@@ -157,8 +161,8 @@ foreach ($r in @($records | Where-Object { $_.daysOut -le $window })) {
         }
         $dow = $r.dep.DayOfWeek
         if ($dow -eq 'Tuesday' -or $dow -eq 'Wednesday') { $score += 8; [void]$basis.Add('Tue/Wed departure') }
-        if ($r.daysOut -le 2) { $score += 7; [void]$basis.Add(('{0}d out &mdash; release window' -f $r.daysOut)) }
-        elseif ($r.daysOut -eq $window) { $score += 7; [void]$basis.Add('just released today') }
+        if ($r.daysOut -le 1) { $score += 7; [void]$basis.Add(('{0}d out &mdash; release window' -f $r.daysOut)) }
+        elseif ($r.daysOut -eq $rw) { $score += 7; [void]$basis.Add('just released today') }
         $r.gwGroup = 2
         $r.gwScore = [int][Math]::Round([Math]::Max(5, [Math]::Min(95, $score)))
         $r.gwSort = -$r.gwScore
@@ -554,8 +558,8 @@ if ($cashRows.Count -eq 0) {
 [void]$sb.Append('</section>' + "`n`n")
 
 # gowild section
-[void]$sb.Append('<section>' + "`n" + ('  <h2>GoWild window &mdash; next {0} days</h2>' -f $window) + "`n")
-[void]$sb.Append(('  <p class="sub">Frontier opens international GoWild booking {0} days out. GoWild prices and seat counts are read <strong>directly from flyfrontier.com</strong> at sweep time &mdash; all-in one-way totals ($0.01 fare + taxes and fees). A seat shown here can be gone by the time you book; rows marked proxy have not been swept yet. Top {1} of {2} in window.</p>' -f $window, $gwRows.Count, $gwPool.Count) + "`n")
+[void]$sb.Append('<section>' + "`n" + '  <h2>GoWild booking window</h2>' + "`n")
+[void]$sb.Append(('  <p class="sub">Per the pass terms, GoWild booking opens <strong>1 day before departure for domestic</strong> flights and <strong>{0} days before for international</strong>. Prices and seat counts are read <strong>directly from flyfrontier.com</strong> at sweep time &mdash; all-in one-way totals ($0.01 fare + taxes and fees). A seat shown here can be gone by the time you book; rows marked proxy have not been swept yet. Top {1} of {2} in window.</p>' -f $window, $gwRows.Count, $gwPool.Count) + "`n")
 if ($gwRows.Count -eq 0) {
     [void]$sb.Append('  <div class="empty">No departures inside the GoWild window yet &mdash; run a sweep first.</div>' + "`n")
 } else {

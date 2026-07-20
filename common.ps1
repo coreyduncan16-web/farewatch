@@ -137,6 +137,33 @@ function Get-FrontierFlightData([string]$o, [string]$d, [datetime]$dep) {
     ,@($out)
 }
 
+# Per the GoWild pass terms: domestic flights are bookable starting the day
+# before departure; international 10 days before. Returns the booking window
+# in days for a route, using data\network.json country codes when available.
+$script:FwNet = $null
+$script:FwNetLoaded = $false
+function Get-FwNetwork {
+    if (-not $script:FwNetLoaded) {
+        $script:FwNetLoaded = $true
+        $p = Get-FwPath 'data\network.json'
+        if (Test-Path $p) { $script:FwNet = Get-Content -Raw -Encoding UTF8 $p | ConvertFrom-Json }
+    }
+    $script:FwNet
+}
+
+function Get-FwGoWildWindow($cfg, [string]$o, [string]$d) {
+    $net = Get-FwNetwork
+    if ($null -ne $net) {
+        $co = ''; $cd = ''
+        if ($null -ne $net.stations.$o) { $co = [string]$net.stations.$o.country }
+        if ($null -ne $net.stations.$d) { $cd = [string]$net.stations.$d.country }
+        if ($co -eq 'US' -and $cd -eq 'US') { return [int]$cfg.goWildDomesticWindowDays }
+        return [int]$cfg.goWildWindowDays
+    }
+    # no network data: assume the wider (international) window
+    [int]$cfg.goWildWindowDays
+}
+
 function Read-FwMeta {
     $m = @{ lastSweepUtc = ''; provider = 'none'; note = '' }
     $p = Get-FwPath 'data\meta.json'

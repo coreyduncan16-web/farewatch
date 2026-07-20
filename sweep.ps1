@@ -287,14 +287,17 @@ if ($Demo) {
             $cap = [int]$cfg.watchSweepCalls
             if ($MaxCalls -gt 0) { $cap = $MaxCalls }
             if ($cap -gt $budget -and $budget -gt 0) { $cap = $budget }
+            # per GoWild terms: domestic bookable 1 day out, international 10
             $cands = @($universe | Where-Object {
-                $_.daysOut -le $window -and ($anyWatch -or $watched.ContainsKey(('{0}-{1}' -f $_.o, $_.d)))
+                $_.daysOut -le (Get-FwGoWildWindow $cfg $_.o $_.d) -and
+                ($anyWatch -or $watched.ContainsKey(('{0}-{1}' -f $_.o, $_.d)))
             })
             $planned = @($cands | Sort-Object { $_.daysOut } | Select-Object -First $cap)
         }
     } else {
-        # Daily mode: stalest first, with big bonuses for the GoWild window
-        # and for imminent departures / the release-day edge.
+        # Daily mode: stalest first, with big bonuses for each route's own
+        # GoWild booking window (domestic 1 day, international 10 days, per
+        # the pass terms) and for the release-day edge.
         $candidates = New-Object System.Collections.ArrayList
         foreach ($rd in $universe) {
             $stale = 999
@@ -304,9 +307,10 @@ if ($Demo) {
                 $stale = ($today - $last).Days
             }
             if ($stale -lt 1) { continue }   # already swept today
+            $w = Get-FwGoWildWindow $cfg $rd.o $rd.d
             $score = [double]$stale
-            if ($rd.daysOut -le $window) { $score += 50 }
-            if ($rd.daysOut -le 2 -or $rd.daysOut -eq $window) { $score += 25 }
+            if ($rd.daysOut -le $w) { $score += 50 }
+            if ($rd.daysOut -le 1 -or $rd.daysOut -eq $w) { $score += 25 }
             $rd.score = $score
             [void]$candidates.Add($rd)
         }
