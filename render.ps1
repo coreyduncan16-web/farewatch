@@ -513,6 +513,7 @@ $searchHtml = @'
     <button id="sGo">SEARCH</button>
     <a class="live" id="sLive" href="#" target="_blank" rel="noopener">check live on flyfrontier.com &rarr;</a>
   </div>
+  <div id="sLiveRes"></div>
   <div id="sResults"></div>
 </section>
 
@@ -581,6 +582,12 @@ now,&quot; and confirm logged in at flyfrontier.com before you count on it.</p>
 and seat assignments, which is where Frontier makes its money. Compare
 like for like before calling anything cheap.</p>
 </footer>
+<form name="watch" method="POST" action="/" netlify netlify-honeypot="bot-field" hidden>
+  <input name="email"><input name="route"><input name="maxprice"><input name="bot-field">
+</form>
+<form name="recheck" method="POST" action="/" netlify hidden>
+  <input name="route"><input name="date">
+</form>
 '@)
 
 # embedded data + search logic
@@ -634,6 +641,11 @@ function submitWatch(){
     fetch(FWFORM.action, { method: 'POST', mode: 'no-cors', body: fd });
     el('wMsg').textContent = 'You are on the list! ' + rt + ' will be checked hourly; one email lands when the GoWild total is $' + mx + ' or less.';
     el('wEmail').value = '';
+  } else if (location.protocol !== 'file:') {
+    var params = 'form-name=watch&email=' + encodeURIComponent(em) + '&route=' + encodeURIComponent(rt) + '&maxprice=' + encodeURIComponent(mx);
+    fetch('/', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params })
+      .then(function(){ el('wMsg').textContent = 'You are on the list! ' + rt + ' will be checked hourly; one email lands when the GoWild total is $' + mx + ' or less.'; el('wEmail').value = ''; })
+      .catch(function(){ el('wMsg').textContent = 'Signup hiccup - try again in a minute.'; });
   } else {
     el('wMsg').textContent = 'Opening your email app - just hit send and you will be added.';
     location.href = 'mailto:' + FWFORM.fallback
@@ -641,23 +653,15 @@ function submitWatch(){
       + '&body=' + encodeURIComponent('Please add me to FareWatch price alerts.\nEmail: ' + em + '\nRoute: ' + rt + '\nAlert at or under: $' + mx);
   }
 }
-function doSearch(){
-  updLive();
-  var o = el('sFrom').value, d = el('sTo').value, ds = el('sDate').value, gwOnly = el('sGw').checked;
-  var rows = FW.filter(function(r){ return r.o === o && r.d === d && (!ds || r.dep === ds) && (!gwOnly || r.gc > 0); });
-  rows.sort(function(a, b){
-    var ag = a.gc > 0 ? a.g : 1e9, bg = b.gc > 0 ? b.g : 1e9;
-    return (ag - bg) || (a.cash - b.cash) || (a.dep < b.dep ? -1 : 1);
-  });
-  if (!rows.length) {
-    el('sResults').innerHTML = '<div class="empty">No swept data for ' + o + ' &rarr; ' + d + (ds ? ' on ' + ds : '') + (gwOnly ? ' with pass seats' : '') + ' yet. The route may still fly &mdash; use the live link above' + (gwOnly ? ', or uncheck &quot;pass seats only&quot;' : '') + '.</div>';
-    return;
-  }
-  var h = '';
-  if (el('sTrip').value === 'rt') {
-    h += '<p class="sub">Tracked prices are one-way each way (GoWild is booked one-way anyway). The live link above opens the full round-trip search on Frontier.</p>';
-  }
-  h += '<table><thead><tr><th>Route</th><th>Departs</th><th class="hide-sm">Cash</th><th>GoWild</th><th>Pass seats</th><th></th></tr></thead><tbody>';
+function requestRecheck(o, d, ds){
+  var scope = ds ? ds : 'the next 10 days';
+  var params = 'form-name=recheck&route=' + encodeURIComponent(o + '-' + d) + '&date=' + encodeURIComponent(ds || '');
+  fetch('/', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params })
+    .then(function(){ el('sLiveRes').innerHTML = '<div class="empty">Queued! ' + o + ' &rarr; ' + d + ' (' + scope + ') gets swept within the hour &mdash; check back, or grab it right now with the flyfrontier.com link above.</div>'; })
+    .catch(function(){ el('sLiveRes').innerHTML = '<div class="empty">Could not queue the check - use the flyfrontier.com link above.</div>'; });
+}
+function cachedRowsHtml(rows){
+  var h = '<table><thead><tr><th>Route</th><th>Departs</th><th class="hide-sm">Cash</th><th>GoWild</th><th>Pass seats</th><th></th></tr></thead><tbody>';
   rows.slice(0, 30).forEach(function(r){
     h += '<tr class="row"><td><div class="route">' + r.o + ' <span>&rarr;</span> ' + r.d + '</div></td>'
       + '<td class="num">' + r.dep + '</td>'
@@ -668,7 +672,87 @@ function doSearch(){
       + '<button class="rowbtn" onclick="showWatch(\'' + r.o + '\',\'' + r.d + '\',' + (r.gc > 0 ? r.g : 60) + ')">watch</button></td></tr>';
   });
   h += '</tbody></table>';
+  return h;
+}
+function doSearch(){
+  updLive();
+  var o = el('sFrom').value, d = el('sTo').value, ds = el('sDate').value, gwOnly = el('sGw').checked;
+  liveFetch(o, d, ds);
+  var pair = FW.filter(function(r){ return r.o === o && r.d === d && (!gwOnly || r.gc > 0); });
+  var rows = pair.filter(function(r){ return !ds || r.dep === ds; });
+  rows.sort(function(a, b){
+    var ag = a.gc > 0 ? a.g : 1e9, bg = b.gc > 0 ? b.g : 1e9;
+    return (ag - bg) || (a.cash - b.cash) || (a.dep < b.dep ? -1 : 1);
+  });
+  var h = '';
+  if (el('sTrip').value === 'rt') {
+    h += '<p class="sub">Tracked prices are one-way each way (GoWild is booked one-way anyway). The live link above opens the full round-trip search on Frontier.</p>';
+  }
+  if (rows.length) {
+    h += '<p class="sub">From the last sweep (tracked routes only):</p>' + cachedRowsHtml(rows);
+  } else {
+    // nothing on that exact date: suggest the same route across the next 10 days
+    var todayIso = isoDate(new Date());
+    var limIso = isoDate(new Date(Date.now() + 10 * 864e5));
+    var sugg = pair.filter(function(r){ return r.dep >= todayIso && r.dep <= limIso; });
+    sugg.sort(function(a, b){ return a.dep < b.dep ? -1 : 1; });
+    if (sugg.length) {
+      h += '<p class="sub">Nothing tracked for ' + o + ' &rarr; ' + d + (ds ? ' on ' + ds : '') + ' &mdash; here is the same route over the <strong>next 10 days</strong> instead:</p>' + cachedRowsHtml(sugg);
+    } else {
+      h += '<div class="empty">No swept data for ' + o + ' &rarr; ' + d + ' yet'
+        + (gwOnly ? ' with pass seats (try unchecking the box)' : '') + '. '
+        + '<button class="rowbtn" onclick="requestRecheck(\'' + o + '\',\'' + d + '\',\'\')">SCAN NEXT 10 DAYS</button>'
+        + ' queues a full sweep of this route (done within the hour) &mdash; or open it live with the flyfrontier.com link above.</div>';
+    }
+  }
   el('sResults').innerHTML = h;
+}
+function isoDate(dt){ return dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0'); }
+function fmtT(s){ var t = new Date(s); var h = t.getHours(), m = String(t.getMinutes()).padStart(2,'0'); var ap = h >= 12 ? 'p' : 'a'; h = h % 12; if (h === 0) h = 12; return h + ':' + m + ap; }
+function liveFetch(o, d, ds){
+  if (location.protocol === 'file:') { return; }
+  var dates = ds ? [ds] : [isoDate(new Date()), isoDate(new Date(Date.now() + 864e5))];
+  el('sLiveRes').innerHTML = '<div class="empty">checking flyfrontier.com live for ' + o + ' &rarr; ' + d + '...</div>';
+  Promise.all(dates.map(function(dt){
+    return fetch('/.netlify/functions/fares?o=' + o + '&d=' + d + '&date=' + dt)
+      .then(function(r){ return r.json(); })
+      .then(function(j){ return { dt: dt, j: j }; })
+      .catch(function(){ return { dt: dt, j: null }; });
+  })).then(function(results){
+    var rows = [];
+    var failed = true;
+    results.forEach(function(res){
+      if (res.j && res.j.flights) { failed = false; res.j.flights.forEach(function(f){ f._dt = res.dt; rows.push(f); }); }
+    });
+    var blocked = results.some(function(res){ return res.j && res.j.blocked; });
+    if (failed || (blocked && !rows.length)) {
+      el('sLiveRes').innerHTML = '<div class="empty">Frontier blocks instant checks from cloud servers, so live data comes from the tracker&rsquo;s hourly sweeps instead. Want this exact route re-checked soon? '
+        + '<button class="rowbtn" onclick="requestRecheck(\'' + o + '\',\'' + d + '\',\'' + (ds || '') + '\')">REQUEST FRESH CHECK</button>'
+        + ' &mdash; or see it right now on the flyfrontier.com link above.</div>';
+      return;
+    }
+    if (!rows.length) {
+      el('sLiveRes').innerHTML = '<p class="sub"><strong>LIVE</strong> &mdash; checked seconds ago:</p><div class="empty">No ' + o + ' &rarr; ' + d + ' flights on ' + dates.join(' or ') + ' &mdash; see other days for this route below, or '
+        + '<button class="rowbtn" onclick="requestRecheck(\'' + o + '\',\'' + d + '\',\'\')">SCAN NEXT 10 DAYS</button>.</div>';
+      return;
+    }
+    rows.sort(function(a, b){
+      var ag = (a.gwOn && a.gw > 0) ? a.gw : 1e9, bg = (b.gwOn && b.gw > 0) ? b.gw : 1e9;
+      return (ag - bg) || (a.cash - b.cash);
+    });
+    var h = '<p class="sub"><strong>LIVE</strong> &mdash; checked seconds ago, straight from flyfrontier.com:</p>';
+    h += '<table><thead><tr><th>Flight</th><th>Departs</th><th class="hide-sm">Stops</th><th class="hide-sm">Cash</th><th>GoWild</th><th></th></tr></thead><tbody>';
+    rows.slice(0, 20).forEach(function(f){
+      h += '<tr class="row"><td><div class="route">' + f.fn + '</div></td>'
+        + '<td class="num">' + f._dt + '<span class="delta">' + fmtT(f.dep) + ' &rarr; ' + fmtT(f.arr) + '</span></td>'
+        + '<td class="num hide-sm">' + (f.stops === 0 ? 'nonstop' : f.stops + ' stop') + '</td>'
+        + '<td class="num hide-sm">' + money(f.cash) + '</td>'
+        + '<td class="num">' + ((f.gwOn && f.gw > 0) ? '<span class="price">' + money(f.gw) + '</span><span class="delta">pass seat!</span>' : '<span class="delta">&mdash; none</span>') + '</td>'
+        + '<td><a class="bookbtn' + ((f.gwOn && f.gw > 0) ? '' : ' dim') + '" target="_blank" rel="noopener" href="' + liveUrl(o, d, f._dt) + '">BOOK &rarr;</a></td></tr>';
+    });
+    h += '</tbody></table>';
+    el('sLiveRes').innerHTML = h;
+  });
 }
 document.addEventListener('DOMContentLoaded', function(){
   el('sGo').onclick = doSearch;

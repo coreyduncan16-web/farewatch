@@ -16,22 +16,7 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'common.ps1')
 
 $cfg = Read-FwConfig
-$csvUrl = [string]$cfg.watchIntake.csvUrl
-if ($csvUrl -eq '') { Write-Output 'intake: no csvUrl configured yet (see README) - skipping.'; return }
-
-try {
-    $raw = (Invoke-WebRequest -Uri $csvUrl -UseBasicParsing -TimeoutSec 60).Content
-} catch {
-    Write-Output ('intake: could not fetch signup sheet: ' + $_.Exception.Message)
-    return
-}
-$rows = @($raw | ConvertFrom-Csv)
-if ($rows.Count -eq 0) { Write-Output 'intake: no signups yet.'; return }
-
-# Column order from a Google Form sheet: Timestamp, then questions in order:
-# email, route, max price. Read by position so renamed questions still work.
-$cols = @($rows[0].PSObject.Properties.Name)
-
+$secrets = Read-FwEnv
 $watchPath = Get-FwPath 'watches.json'
 $existing = @{ watches = @() }
 if (Test-Path $watchPath) {
@@ -46,27 +31,80 @@ foreach ($w in @($existing.watches)) {
 }
 
 $added = 0
-foreach ($row in $rows) {
-    $email = ([string]$row.($cols[1])).Trim()
-    $route = ([string]$row.($cols[2])).Trim().ToUpper()
-    $maxRaw = ''
-    if ($cols.Count -gt 3) { $maxRaw = ([string]$row.($cols[3])).Trim() -replace '[^0-9.]', '' }
-    if ($email -notmatch '^[^@\s]+@[^@\s]+\.[^@\s]+$') { continue }
-    if ($route -ne 'ANY' -and $route -notmatch '^[A-Z]{3}-[A-Z]{3}$') { continue }
+function Add-Watch([string]$email, [string]$route, [string]$maxRaw) {
+    $email = $email.Trim(); $route = $route.Trim().ToUpper()
+    if ($email -notmatch '^[^@\s]+@[^@\s]+\.[^@\s]+$') { return }
+    if ($route -ne 'ANY' -and $route -notmatch '^[A-Z]{3}-[A-Z]{3}$') { return }
     $maxGw = 100.0
+    $maxRaw = ([string]$maxRaw) -replace '[^0-9.]', ''
     if ($maxRaw -ne '') {
         try { $maxGw = [Math]::Max(20.0, [Math]::Min(500.0, [double]$maxRaw)) } catch { }
     }
     $key = ($email + '|' + $route).ToLower()
-    if ($seen.ContainsKey($key)) { continue }
+    if ($seen.ContainsKey($key)) { return }
     $seen[$key] = $true
     [void]$list.Add(@{ route = $route; maxGw = $maxGw; to = @($email); source = 'website'; added = (Get-Date -Format 'yyyy-MM-dd') })
-    $added++
+    $script:added++
+}
+
+# --- source 1: Netlify form submissions (watch + recheck), zero setup ---
+$rechecks = New-Object System.Collections.ArrayList
+$nToken = $secrets['NETLIFY_TOKEN']; $nSite = $secrets['NETLIFY_SITE_ID']
+if ($nToken -and $nSite) {
+    try {
+        $auth = @{ Authorization = 'Bearer ' + $nToken }
+        $subs = @(Invoke-RestMethod -Uri ('https://api.netlify.com/api/v1/sites/{0}/submissions?per_page=100' -f $nSite) -Headers $auth -TimeoutSec 60)
+        foreach ($s in $subs) {
+            $formName = [string]$s.form_name
+            if ($formName -eq 'watch') {
+                Add-Watch ([string]$s.data.email) ([string]$s.data.route) ([string]$s.data.maxprice)
+            } elseif ($formName -eq 'recheck') {
+                $rt = ([string]$s.data.route).Trim().ToUpper()
+                if ($rt -match '^[A-Z]{3}-[A-Z]{3}$') {
+                    [void]$rechecks.Add(@{ route = $rt; date = ([string]$s.data.date).Trim(); added = (Get-Date -Format 's') })
+                }
+            }
+            # processed - delete so it is not ingested twice
+            try { Invoke-RestMethod -Method Delete -Uri ('https://api.netlify.com/api/v1/submissions/{0}' -f $s.id) -Headers $auth -TimeoutSec 60 | Out-Null } catch { }
+        }
+        if ($subs.Count -gt 0) { Write-Output ('intake: processed {0} website submission(s) from Netlify.' -f $subs.Count) }
+    } catch {
+        Write-Output ('intake: Netlify submissions check failed: ' + $_.Exception.Message)
+    }
+}
+
+# --- source 2: optional Google Form CSV (legacy path, if configured) ---
+$csvUrl = [string]$cfg.watchIntake.csvUrl
+if ($csvUrl -ne '') {
+    try {
+        $raw = (Invoke-WebRequest -Uri $csvUrl -UseBasicParsing -TimeoutSec 60).Content
+        $rows = @($raw | ConvertFrom-Csv)
+        if ($rows.Count -gt 0) {
+            $cols = @($rows[0].PSObject.Properties.Name)
+            foreach ($row in $rows) {
+                $maxRaw = ''
+                if ($cols.Count -gt 3) { $maxRaw = [string]$row.($cols[3]) }
+                Add-Watch ([string]$row.($cols[1])) ([string]$row.($cols[2])) $maxRaw
+            }
+        }
+    } catch {
+        Write-Output ('intake: could not fetch signup sheet: ' + $_.Exception.Message)
+    }
 }
 
 if ($added -gt 0) {
     Write-FwUtf8 $watchPath (@{ watches = @($list) } | ConvertTo-Json -Depth 5)
-    Write-Output ('intake: added {0} new watch(es) from the website ({1} total).' -f $added, $list.Count)
-} else {
-    Write-Output ('intake: no new signups ({0} watches active).' -f $list.Count)
 }
+if ($rechecks.Count -gt 0) {
+    # merge with any pending rechecks
+    Ensure-FwDataDir
+    $rcPath = Get-FwPath 'data\recheck.json'
+    $pending = New-Object System.Collections.ArrayList
+    if (Test-Path $rcPath) {
+        foreach ($p in @((Get-Content -Raw -Encoding UTF8 $rcPath | ConvertFrom-Json))) { [void]$pending.Add($p) }
+    }
+    foreach ($r in $rechecks) { [void]$pending.Add($r) }
+    Write-FwUtf8 $rcPath (ConvertTo-Json @($pending) -Depth 4 -Compress)
+    Write-Output ('intake: {0} fresh-check request(s) queued.' -f $rechecks.Count)
+}
+Write-Output ('intake: {0} new watch(es); {1} watches active.' -f $added, $list.Count)

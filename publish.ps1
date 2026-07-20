@@ -41,21 +41,91 @@ if ($remote) {
 }
 
 # --- Netlify direct upload (outage-proof path) ---
+# Uses the file-digest deploy API so the live-search function deploys too
+# (the simple zip method only handles static files).
 $secrets = Read-FwEnv
 $nToken = $secrets['NETLIFY_TOKEN']
 $nSite  = $secrets['NETLIFY_SITE_ID']
 if ($nToken -and $nSite) {
-    $zip = Join-Path $env:TEMP 'farewatch-site.zip'
-    if (Test-Path $zip) { Remove-Item $zip -Force }
-    Compress-Archive -Path (Join-Path $docs '*') -DestinationPath $zip -Force
     try {
-        $resp = Invoke-RestMethod -Method Post `
-            -Uri ('https://api.netlify.com/api/v1/sites/{0}/deploys' -f $nSite) `
-            -Headers @{ Authorization = 'Bearer ' + $nToken } `
-            -ContentType 'application/zip' -InFile $zip -TimeoutSec 120
-        Write-Output ('publish: deployed to Netlify -> {0}' -f $resp.ssl_url)
+        $auth = @{ Authorization = 'Bearer ' + $nToken }
+
+        function Get-HashHex($algo, [string]$path) {
+            $h = [System.Security.Cryptography.HashAlgorithm]::Create($algo)
+            $bytes = $h.ComputeHash([IO.File]::ReadAllBytes($path))
+            (($bytes | ForEach-Object { $_.ToString('x2') }) -join '')
+        }
+
+        # static files (everything under docs\ except the functions folder)
+        $files = @{}; $byHash = @{}
+        foreach ($f in (Get-ChildItem $docs -Recurse -File | Where-Object { $_.FullName -notmatch '\\netlify\\functions\\' })) {
+            $rel = '/' + $f.FullName.Substring($docs.Length + 1).Replace('\', '/')
+            $sha1 = Get-HashHex 'SHA1' $f.FullName
+            $files[$rel] = $sha1
+            if (-not $byHash.ContainsKey($sha1)) { $byHash[$sha1] = @() }
+            $byHash[$sha1] += @(@{ rel = $rel; path = $f.FullName })
+        }
+
+        # function bundle: zip each .js in docs\netlify\functions
+        $functions = @{}; $fnZips = @{}; $fnByHash = @{}
+        $fnDir = Join-Path $docs 'netlify\functions'
+        if (Test-Path $fnDir) {
+            foreach ($fn in (Get-ChildItem $fnDir -Filter '*.js' -File)) {
+                $fnName = [IO.Path]::GetFileNameWithoutExtension($fn.Name)
+                $zipPath = Join-Path $env:TEMP ('fw-fn-' + $fnName + '.zip')
+                if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
+                Compress-Archive -Path $fn.FullName -DestinationPath $zipPath -Force
+                $sha256 = Get-HashHex 'SHA256' $zipPath
+                $functions[$fnName] = $sha256
+                $fnZips[$fnName] = $zipPath
+                $fnByHash[$sha256] = $fnName   # required_functions comes back as hashes
+            }
+        }
+
+        # clear any half-finished deploys so they cannot block this one
+        try {
+            $recent = Invoke-RestMethod -Uri ('https://api.netlify.com/api/v1/sites/{0}/deploys?per_page=5' -f $nSite) -Headers $auth -TimeoutSec 60
+            foreach ($old in @($recent | Where-Object { $_.state -eq 'uploading' -or $_.state -eq 'prepared' })) {
+                Invoke-RestMethod -Method Post -Uri ('https://api.netlify.com/api/v1/deploys/{0}/cancel' -f $old.id) -Headers $auth -TimeoutSec 60 | Out-Null
+            }
+        } catch { }
+
+        $body = @{ files = $files; functions = $functions } | ConvertTo-Json -Depth 4
+        $dep = Invoke-RestMethod -Method Post -Uri ('https://api.netlify.com/api/v1/sites/{0}/deploys' -f $nSite) `
+            -Headers $auth -ContentType 'application/json' -Body $body -TimeoutSec 120
+
+        foreach ($sha in @($dep.required)) {
+            foreach ($entry in @($byHash[$sha])) {
+                $urlPath = ($entry.rel.TrimStart('/').Split('/') | ForEach-Object { [uri]::EscapeDataString($_) }) -join '/'
+                $putUri = 'https://api.netlify.com/api/v1/deploys/{0}/files/{1}' -f $dep.id, $urlPath
+                if ((Get-Item $entry.path).Length -eq 0) {
+                    # -InFile chokes on 0-byte files (this is what kept 400ing on .nojekyll)
+                    Invoke-RestMethod -Method Put -Uri $putUri -Headers $auth -ContentType 'application/octet-stream' -Body '' -TimeoutSec 120 | Out-Null
+                } else {
+                    Invoke-RestMethod -Method Put -Uri $putUri -Headers $auth -ContentType 'application/octet-stream' -InFile $entry.path -TimeoutSec 120 | Out-Null
+                }
+            }
+        }
+        foreach ($fnHash in @($dep.required_functions)) {
+            $fnName = $fnByHash[$fnHash]
+            if (-not $fnName) { continue }
+            Invoke-RestMethod -Method Put -Uri ('https://api.netlify.com/api/v1/deploys/{0}/functions/{1}?runtime=js' -f $dep.id, $fnName) `
+                -Headers $auth -ContentType 'application/octet-stream' -InFile $fnZips[$fnName] -TimeoutSec 180 | Out-Null
+        }
+        foreach ($z in $fnZips.Values) { Remove-Item $z -Force -ErrorAction SilentlyContinue }
+        $state = 'uploading'
+        for ($w = 0; $w -lt 8; $w++) {
+            Start-Sleep -Seconds 4
+            $state = [string](Invoke-RestMethod -Uri ('https://api.netlify.com/api/v1/deploys/{0}' -f $dep.id) -Headers $auth -TimeoutSec 60).state
+            if ($state -eq 'ready' -or $state -eq 'error') { break }
+        }
+        Write-Output ('publish: Netlify deploy {0} ({1} files, {2} functions) -> {3}' -f $state, $files.Count, $functions.Count, $dep.ssl_url)
     } catch {
-        Write-Output ('publish: Netlify deploy failed: ' + $_.Exception.Message)
+        $msg = $_.Exception.Message
+        try {
+            $sr = New-Object IO.StreamReader($_.Exception.Response.GetResponseStream())
+            $msg += ' | ' + $sr.ReadToEnd()
+        } catch { }
+        Write-Output ('publish: Netlify deploy failed: ' + $msg)
     }
-    Remove-Item $zip -Force -ErrorAction SilentlyContinue
 }

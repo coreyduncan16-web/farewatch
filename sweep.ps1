@@ -280,7 +280,34 @@ if ($Demo) {
                 if ($r -eq 'ANY') { $anyWatch = $true } else { $watched[$r] = $true }
             }
         }
-        if (-not $anyWatch -and $watched.Keys.Count -eq 0) {
+        # one-shot fresh-check requests from the website go first
+        $rcExtra = New-Object System.Collections.ArrayList
+        $rcPath = Get-FwPath 'data\recheck.json'
+        if (Test-Path $rcPath) {
+            foreach ($rc in @((Get-Content -Raw -Encoding UTF8 $rcPath | ConvertFrom-Json))) {
+                $rt = [string]$rc.route
+                if ($rt -notmatch '^[A-Z]{3}-[A-Z]{3}$') { continue }
+                $ro = $rt.Split('-')[0]; $rdst = $rt.Split('-')[1]
+                if ([string]$rc.date -match '^\d{4}-\d{2}-\d{2}$') {
+                    $dates = @([datetime]::ParseExact([string]$rc.date, 'yyyy-MM-dd', $null))
+                } else {
+                    # no date given: scan the whole route across the next 10 days
+                    $dates = @()
+                    for ($k = 0; $k -le 10; $k++) { $dates += $today.AddDays($k) }
+                }
+                foreach ($dt in $dates) {
+                    if ($dt -lt $today -or ($dt - $today).Days -gt [int]$cfg.horizonDays) { continue }
+                    [void]$rcExtra.Add(@{
+                        key = ('{0}-{1}|{2}' -f $ro, $rdst, $dt.ToString('yyyy-MM-dd'))
+                        o = $ro; d = $rdst; dep = $dt; daysOut = ($dt - $today).Days
+                    })
+                }
+            }
+            Remove-Item $rcPath -Force
+            if ($rcExtra.Count -gt 0) { Write-Output ('watch sweep: {0} website fresh-check request(s) first in line.' -f $rcExtra.Count) }
+        }
+
+        if (-not $anyWatch -and $watched.Keys.Count -eq 0 -and $rcExtra.Count -eq 0) {
             Write-Output 'watch sweep: no watches configured; nothing to check.'
             $planned = @()
         } else {
@@ -292,7 +319,13 @@ if ($Demo) {
                 $_.daysOut -le (Get-FwGoWildWindow $cfg $_.o $_.d) -and
                 ($anyWatch -or $watched.ContainsKey(('{0}-{1}' -f $_.o, $_.d)))
             })
-            $planned = @($cands | Sort-Object { $_.daysOut } | Select-Object -First $cap)
+            $slots = $cap - $rcExtra.Count
+            if ($slots -lt 0) { $slots = 0 }
+            $seenKeys = @{}
+            foreach ($x in $rcExtra) { $seenKeys[$x.key] = $true }
+            $rest = @($cands | Where-Object { -not $seenKeys.ContainsKey($_.key) } |
+                Sort-Object { $_.daysOut } | Select-Object -First $slots)
+            $planned = @($rcExtra) + $rest
         }
     } else {
         # Daily mode: stalest first, with big bonuses for each route's own
