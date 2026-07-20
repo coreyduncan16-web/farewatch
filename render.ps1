@@ -492,13 +492,20 @@ $searchHtml = @'
   <h2>Search a route</h2>
   <p class="sub">Every tracked departure for a route, cheapest GoWild fare
   first. Data is as of the last sweep &mdash; always confirm with the live
-  link before booking.</p>
+  link before booking. &ldquo;GoWild seats only&rdquo; hides dates where no
+  pass seats were seen at the last sweep &mdash; leave it off to see every
+  tracked date, including cash-only ones.</p>
   <div class="searchbar">
+    <label>Trip<select id="sTrip">
+      <option value="ow" selected>One way</option>
+      <option value="rt">Round trip</option>
+    </select></label>
     <label>From<select id="sFrom">__FROMOPTS__</select></label>
     <label>To<select id="sTo">__TOOPTS__</select></label>
     <label>Date (optional)<input type="date" id="sDate"></label>
+    <label id="sRetLbl" style="display:none">Return date<input type="date" id="sRet"></label>
     <label style="flex-direction:row;align-items:center;gap:6px;padding-bottom:9px">
-      <input type="checkbox" id="sGw" checked> pass seats only</label>
+      <input type="checkbox" id="sGw"> GoWild seats only</label>
     <button id="sGo">SEARCH</button>
     <a class="live" id="sLive" href="#" target="_blank" rel="noopener">check live on flyfrontier.com &rarr;</a>
   </div>
@@ -591,12 +598,18 @@ var FWFORM = __FWFORM__;
 var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function el(i){ return document.getElementById(i); }
 function money(v){ return (v == null || v < 0) ? '&mdash;' : '$' + Number(v).toFixed(2); }
-function liveUrl(o, d, ds){
+function fmtD(ds){ var p = ds.split('-'); return encodeURIComponent(MONTHS[+p[1]-1] + ' ' + (+p[2]) + ', ' + p[0]); }
+function liveUrl(o, d, ds, ret){
   var u = 'https://booking.flyfrontier.com/Flight/InternalSelect?s=true&o1=' + o + '&d1=' + d + '&ADT=1&mon=true';
-  if (ds) { var p = ds.split('-'); u += '&dd1=' + encodeURIComponent(MONTHS[+p[1]-1] + ' ' + (+p[2]) + ', ' + p[0]); }
+  if (ds) { u += '&dd1=' + fmtD(ds); }
+  if (ret) { u += '&dd2=' + fmtD(ret); }
   return u;
 }
-function updLive(){ el('sLive').href = liveUrl(el('sFrom').value, el('sTo').value, el('sDate').value); }
+function updLive(){
+  var rt = el('sTrip').value === 'rt';
+  el('sRetLbl').style.display = rt ? '' : 'none';
+  el('sLive').href = liveUrl(el('sFrom').value, el('sTo').value, el('sDate').value, rt ? el('sRet').value : '');
+}
 function showWatch(o, d, g){
   el('wRoute').value = o + '-' + d;
   el('wMax').value = Math.max(20, Math.ceil(g));
@@ -636,7 +649,11 @@ function doSearch(){
     el('sResults').innerHTML = '<div class="empty">No swept data for ' + o + ' &rarr; ' + d + (ds ? ' on ' + ds : '') + (gwOnly ? ' with pass seats' : '') + ' yet. The route may still fly &mdash; use the live link above' + (gwOnly ? ', or uncheck &quot;pass seats only&quot;' : '') + '.</div>';
     return;
   }
-  var h = '<table><thead><tr><th>Route</th><th>Departs</th><th class="hide-sm">Cash</th><th>GoWild</th><th>Pass seats</th><th></th></tr></thead><tbody>';
+  var h = '';
+  if (el('sTrip').value === 'rt') {
+    h += '<p class="sub">Tracked prices are one-way each way (GoWild is booked one-way anyway). The live link above opens the full round-trip search on Frontier.</p>';
+  }
+  h += '<table><thead><tr><th>Route</th><th>Departs</th><th class="hide-sm">Cash</th><th>GoWild</th><th>Pass seats</th><th></th></tr></thead><tbody>';
   rows.slice(0, 30).forEach(function(r){
     h += '<tr class="row"><td><div class="route">' + r.o + ' <span>&rarr;</span> ' + r.d + '</div></td>'
       + '<td class="num">' + r.dep + '</td>'
@@ -653,7 +670,7 @@ document.addEventListener('DOMContentLoaded', function(){
   el('sGo').onclick = doSearch;
   el('wGo').onclick = submitWatch;
   el('wEmail').addEventListener('keydown', function(e){ if (e.key === 'Enter') submitWatch(); });
-  ['sFrom','sTo','sDate','sGw'].forEach(function(i){ el(i).onchange = updLive; });
+  ['sFrom','sTo','sDate','sGw','sTrip','sRet'].forEach(function(i){ el(i).onchange = updLive; });
   updLive();
   doSearch();
 });
