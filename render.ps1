@@ -637,6 +637,12 @@ $searchJs = @'
 var FW = __FWDATA__;
 var FWFORM = __FWFORM__;
 var FWSWEPT = '__FWSWEPT__';
+// Netlify Forms endpoint. Form PROCESSING works even when deploys are throttled,
+// and works cross-origin, so the GitHub Pages mirror can submit here too.
+var FWPOST = 'https://frontierflight.netlify.app/';
+function fwPostForm(params){
+  return fetch(FWPOST, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params });
+}
 var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 // per-origin database loaded on demand: origin code -> array of route-dates
 var FWDB = {};
@@ -687,7 +693,7 @@ function submitWatch(){
     var params = 'form-name=watch&email=' + encodeURIComponent(em) + '&route=' + encodeURIComponent(rt) + '&maxprice=' + encodeURIComponent(mx)
       + '&datefrom=' + encodeURIComponent(df) + '&dateto=' + encodeURIComponent(dt);
     var range = (df || dt) ? (' for travel ' + (df || 'now') + ' to ' + (dt || 'anytime')) : '';
-    fetch('/', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params })
+    fwPostForm(params)
       .then(function(){ el('wMsg').textContent = 'You are on the list! ' + rt + range + ' - checked hourly; one email lands when the GoWild total is $' + mx + ' or less.'; el('wEmail').value = ''; })
       .catch(function(){ el('wMsg').textContent = 'Signup hiccup - try again in a minute.'; });
   } else {
@@ -714,7 +720,7 @@ function autoQueue(o, d, ds, pair){
     localStorage.setItem(key, String(Date.now()));
   } catch (e) { }
   var params = 'form-name=recheck&route=' + encodeURIComponent(o + '-' + d) + '&date=' + encodeURIComponent(ds || '');
-  fetch('/', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params })
+  fwPostForm(params)
     .then(function(){
       el('sQueueNote').innerHTML = '<p class="sub">&#9889; LIVE sweep started for ' + o + ' &rarr; ' + d + (ds ? ' on ' + ds : ' (next 10 days)') + ' &mdash; real prices usually land in 2-4 minutes. This page checks for them every 30 seconds and updates itself.</p>';
     })
