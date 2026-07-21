@@ -682,36 +682,25 @@ function autoQueue(o, d, ds, pair){
   var params = 'form-name=recheck&route=' + encodeURIComponent(o + '-' + d) + '&date=' + encodeURIComponent(ds || '');
   fetch('/', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params })
     .then(function(){
-      el('sQueueNote').innerHTML = '<p class="sub">&#9889; LIVE sweep started for ' + o + ' &rarr; ' + d + (ds ? ' on ' + ds : ' (next 10 days)') + ' &mdash; real prices usually land in 2-4 minutes. This page updates itself, just hang tight.</p>';
-      startPoll(o, d, ds);
+      el('sQueueNote').innerHTML = '<p class="sub">&#9889; LIVE sweep started for ' + o + ' &rarr; ' + d + (ds ? ' on ' + ds : ' (next 10 days)') + ' &mdash; real prices usually land in 2-4 minutes. This page checks for them every 30 seconds and updates itself.</p>';
     })
     .catch(function(){ });
 }
 
-// After queueing, watch the site's freshness beacon; when the sweep lands,
-// reload and re-run the same search automatically.
-var pollTimer = null;
-function startPoll(o, d, ds){
-  if (pollTimer) { clearInterval(pollTimer); }
-  var tries = 0;
-  pollTimer = setInterval(function(){
-    tries++;
-    if (tries > 14) {
-      clearInterval(pollTimer); pollTimer = null;
-      el('sQueueNote').innerHTML = '<p class="sub">Sweep is taking longer than usual &mdash; refresh this page in a few minutes.</p>';
-      return;
-    }
-    fetch('meta.json?t=' + Date.now(), { cache: 'no-store' })
-      .then(function(r){ return r.json(); })
-      .then(function(m){
-        if (m.lastSweepUtc && m.lastSweepUtc !== FWSWEPT) {
-          clearInterval(pollTimer); pollTimer = null;
-          try { localStorage.setItem('fwpend', JSON.stringify({ o: o, d: d, ds: ds })); } catch (e) { }
-          location.reload();
-        }
-      })
-      .catch(function(){ });
-  }, 40000);
+// Always-on freshness check, every 30 seconds: when a new sweep lands on
+// the server, reload and resume whatever search is on screen. Pauses while
+// the tab is hidden.
+function checkFresh(){
+  if (document.hidden) { return; }
+  fetch('meta.json?t=' + Date.now(), { cache: 'no-store' })
+    .then(function(r){ return r.json(); })
+    .then(function(m){
+      if (m.lastSweepUtc && m.lastSweepUtc !== FWSWEPT) {
+        try { localStorage.setItem('fwpend', JSON.stringify({ o: el('sFrom').value, d: el('sTo').value, ds: el('sDate').value })); } catch (e) { }
+        location.reload();
+      }
+    })
+    .catch(function(){ });
 }
 
 // Flexible dates: rank the next 10 days of this route from local lows to
@@ -876,6 +865,7 @@ document.addEventListener('DOMContentLoaded', function(){
   } catch (e) { }
   updLive();
   doSearch();
+  setInterval(checkFresh, 30000);
 });
 </script>
 '@
