@@ -27,8 +27,8 @@ $todayStr = $today.ToString('yyyy-MM-dd')
 if ($Provider -eq '') { $Provider = [string]$cfg.provider }
 
 # How long a route-date's price stays "fresh" before it is eligible to be
-# re-swept. Lower this (e.g. 1) to let hourly runs refresh prices intra-day;
-# leave it near 24 for a once-a-day sweep. Absent from older configs -> 20h.
+# re-swept. 6 pairs with the every-6-hours schedule (4 sweeps/day); raise it
+# toward 24 for a once-a-day sweep. Absent from older configs -> 20h.
 $minRefreshHours = 20.0
 if ($cfg.PSObject.Properties['minRefreshHours']) { $minRefreshHours = [double]$cfg.minRefreshHours }
 

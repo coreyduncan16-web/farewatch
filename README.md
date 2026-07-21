@@ -82,18 +82,21 @@ scrapes the public site and is capped only by `apiCallsPerRun` and
 `frontierSleepMs`.
 
 A route-date is only re-priced once it is at least `minRefreshHours` old
-(default 1). Every observation is stamped with the exact time it was priced, so
-re-running the sweep during the day actually refreshes prices instead of
-skipping anything already seen today — set `minRefreshHours` higher for a
-lighter once-a-day cadence.
+(default 6, matching the schedule below). Every observation is stamped with the
+exact time it was priced, so re-running the sweep during the day actually
+refreshes prices instead of skipping anything already seen today. Keep this
+paired with the schedule interval; don't run sweeps more than about hourly —
+hitting Frontier's site too often gets the scraper blocked (403/429) and then
+no data comes back at all.
 
 To automate it, run `register-schedule.ps1` once — it creates a Windows
-Scheduled Task ("FareWatch daily sweep", 07:30 local by default) that runs
-`run-daily.ps1`: sweep → render → alerts → publish to the website. To refresh
-prices through the day, pass `-EveryHours 1` (pairs with `minRefreshHours`):
+Scheduled Task ("FareWatch daily sweep") that runs `run-daily.ps1` (sweep →
+render → alerts → publish) **every 6 hours, 4 times a day** starting 07:30
+local. Re-running the script replaces the existing task, so it's also the fix
+if an old schedule is firing too often:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\register-schedule.ps1 -EveryHours 1
+powershell -ExecutionPolicy Bypass -File .\register-schedule.ps1
 ```
 
 ## Trip planner ("get me there under $X")
