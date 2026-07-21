@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Unsubscribe &middot; FareWatch</title>
+<style>
+:root{--ink:#10201a;--paper:#e8ede8;--panel:#fbfcfa;--rule:#c9d2ca;--dim:#67766d;--buy:#0a6b4e;--spike:#8e2f2f}
+*{box-sizing:border-box}
+body{margin:0;padding:56px 20px;background:var(--paper);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.5}
+.card{max-width:520px;margin:0 auto;background:var(--panel);border:1px solid var(--rule);padding:30px 28px}
+h1{font-size:22px;margin:0 0 6px;letter-spacing:-.02em}
+.tag{font-family:ui-monospace,Menlo,monospace;font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--dim);margin:0 0 18px}
+p{font-size:15px;color:var(--ink)}
+.email{font-family:ui-monospace,Menlo,monospace;font-weight:600;background:#eef2ee;
+  padding:2px 6px;border:1px solid var(--rule);word-break:break-all}
+input[type=email]{width:100%;font-family:ui-monospace,Menlo,monospace;font-size:14px;
+  padding:9px 10px;border:1px solid var(--rule);background:#fff;margin:6px 0 16px}
+button{font-family:ui-monospace,Menlo,monospace;font-size:13px;letter-spacing:.06em;
+  padding:11px 20px;border:1px solid var(--spike);background:var(--spike);color:#fff;cursor:pointer}
+button:hover{opacity:.9}
+.msg{margin-top:16px;font-size:14px}
+.ok{color:var(--buy);font-weight:600}
+a{color:var(--buy)}
+small{color:var(--dim);display:block;margin-top:22px;font-size:12.5px}
+</style></head>
+<body>
+<div class="card">
+  <p class="tag">farewatch / frontier</p>
+  <h1>Unsubscribe from price alerts</h1>
+  <p>We&rsquo;ll stop sending FareWatch GoWild alert emails to this address:</p>
+  <input type="email" id="email" placeholder="you@email.com">
+  <div><button id="go">Unsubscribe me</button></div>
+  <div class="msg" id="msg"></div>
+  <small>Changed your mind later? You can always sign up again on the
+  <a href="/">FareWatch dashboard</a>.</small>
+</div>
+
+<!-- registers the form with Netlify so submissions are captured -->
+<form name="unsub" method="POST" data-netlify="true" netlify-honeypot="bot-field" hidden>
+  <input name="email"><input name="bot-field">
+</form>
+
+<script>
+(function(){
+  function qp(k){ return new URLSearchParams(location.search).get(k) || ''; }
+  var em = document.getElementById('email');
+  em.value = qp('e');
+  document.getElementById('go').onclick = function(){
+    var v = (em.value || '').trim();
+    var msg = document.getElementById('msg');
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) { msg.textContent = 'Please enter a valid email address.'; return; }
+    fetch('/', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'form-name=unsub&email=' + encodeURIComponent(v) })
+      .then(function(){ msg.innerHTML = '<span class="ok">Done. You will stop getting alerts within the hour.</span>'; })
+      .catch(function(){ msg.textContent = 'Something went wrong - please try again in a minute.'; });
+  };
+})();
+</script>
+</body></html>
