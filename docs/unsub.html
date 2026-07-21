@@ -50,8 +50,12 @@ small{color:var(--dim);display:block;margin-top:22px;font-size:12.5px}
     var v = (em.value || '').trim();
     var msg = document.getElementById('msg');
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) { msg.textContent = 'Please enter a valid email address.'; return; }
-    fetch('/', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: 'form-name=unsub&email=' + encodeURIComponent(v) })
+    // Post cross-origin to Netlify's registered "watch" form with a UNSUB
+    // sentinel route (the dedicated unsub form was never deployed to Netlify).
+    // The tracker's intake treats route=UNSUB as an unsubscribe.
+    fetch('https://frontierflight.netlify.app/', { method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'form-name=watch&route=UNSUB&maxprice=0&email=' + encodeURIComponent(v) })
       .then(function(){ msg.innerHTML = '<span class="ok">Done. You will stop getting alerts within the hour.</span>'; })
       .catch(function(){ msg.textContent = 'Something went wrong - please try again in a minute.'; });
   };

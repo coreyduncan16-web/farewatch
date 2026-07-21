@@ -68,10 +68,17 @@ if ($nToken -and $nSite) {
         foreach ($s in $subs) {
             $formName = [string]$s.form_name
             if ($formName -eq 'watch') {
-                $df = ''; $dt = ''
-                if ($s.data.PSObject.Properties['datefrom']) { $df = [string]$s.data.datefrom }
-                if ($s.data.PSObject.Properties['dateto']) { $dt = [string]$s.data.dateto }
-                Add-Watch ([string]$s.data.email) ([string]$s.data.route) ([string]$s.data.maxprice) $df $dt
+                $wr = ([string]$s.data.route).Trim().ToUpper()
+                if ($wr -eq 'UNSUB') {
+                    # unsubscribe routed through the registered watch form
+                    $ue = ([string]$s.data.email).Trim().ToLower()
+                    if ($ue -match '^[^@\s]+@[^@\s]+\.[^@\s]+$') { $unsubEmails[$ue] = $true }
+                } else {
+                    $df = ''; $dt = ''
+                    if ($s.data.PSObject.Properties['datefrom']) { $df = [string]$s.data.datefrom }
+                    if ($s.data.PSObject.Properties['dateto']) { $dt = [string]$s.data.dateto }
+                    Add-Watch ([string]$s.data.email) ([string]$s.data.route) ([string]$s.data.maxprice) $df $dt
+                }
             } elseif ($formName -eq 'recheck') {
                 $rt = ([string]$s.data.route).Trim().ToUpper()
                 if ($rt -match '^[A-Z]{3}-[A-Z]{3}$') {
