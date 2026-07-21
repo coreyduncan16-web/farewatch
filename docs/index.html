@@ -560,9 +560,10 @@ function doSearch(){
   updLive();
   var o = el('sFrom').value, d = el('sTo').value, ds = el('sDate').value, gwOnly = el('sGw').checked;
   liveFetch(o, d, ds);
-  var pair = FW.filter(function(r){ return r.o === o && r.d === d && (!gwOnly || r.gc > 0); });
-  autoQueue(o, d, ds, pair);
-  flexPanel(o, d, pair);
+  var pairAll = FW.filter(function(r){ return r.o === o && r.d === d; });
+  var pair = gwOnly ? pairAll.filter(function(r){ return r.gc > 0; }) : pairAll;
+  autoQueue(o, d, ds, pairAll);
+  flexPanel(o, d, pairAll);   // price ranking always shows every day, unfiltered
   floatGwOrigin(o);
   var rows = pair.filter(function(r){ return !ds || r.dep === ds; });
   rows.sort(function(a, b){
