@@ -16,7 +16,7 @@
   "apiCallsPerRun": 120,
   "watchSweepCalls": 60,
   "crawlEnabled": true,
-  "crawlBatch": 6,
+  "crawlBatch": 18,
   "labRoutes": ["DEN-LAS", "LAS-DEN", "DEN-PHX", "MCO-ATL", "ATL-MCO", "DEN-MCI", "MCO-PHL", "DEN-SLC"],
   "labFloorGw": 20,
   "watchIntake": {
