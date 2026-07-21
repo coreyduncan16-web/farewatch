@@ -466,15 +466,15 @@ foreach ($c in $toCodes) { $toOpts += ('<option value="{0}">{0} - {1}</option>' 
 $searchHtml = @'
 <section id="searchsec">
   <h2>Search a route</h2>
-  <p class="sub">Every tracked departure for a route, cheapest GoWild fare
-  first. Data is as of the last sweep &mdash; always confirm with the live
-  link before booking.</p>
+  <p class="sub">Every flight found for a route (and date, if you pick one),
+  cheapest first. Data is from the last sweep &mdash; always confirm with the
+  live link before booking.</p>
   <div class="searchbar">
     <label>From<select id="sFrom">__FROMOPTS__</select></label>
     <label>To<select id="sTo">__TOOPTS__</select></label>
     <label>Date (optional)<input type="date" id="sDate"></label>
     <label style="flex-direction:row;align-items:center;gap:6px;padding-bottom:9px">
-      <input type="checkbox" id="sGw" checked> pass seats only</label>
+      <input type="checkbox" id="sGw"> pass seats only</label>
     <button id="sGo">SEARCH</button>
     <a class="live" id="sLive" href="#" target="_blank" rel="noopener">check live on flyfrontier.com &rarr;</a>
   </div>
@@ -550,18 +550,7 @@ like for like before calling anything cheap.</p>
 '@)
 
 # embedded data + search logic
-$fwItems = New-Object System.Collections.ArrayList
-foreach ($r in @($records | Sort-Object @{ Expression = { $_.key } })) {
-    [void]$fwItems.Add(@{
-        o = $r.o; d = $r.d; dep = $r.dep.ToString('yyyy-MM-dd')
-        cash = [Math]::Round($r.cur, 2); g = [Math]::Round($r.g, 2)
-        gc = $r.gc; fc = $r.fc; sig = $r.sig
-    })
-}
-$fwJson = '[]'
-if ($fwItems.Count -gt 0) { $fwJson = ConvertTo-Json @($fwItems) -Compress -Depth 3 }
-
-# flattened per-departure rows for the cheapest-first board
+# flattened per-departure rows: powers both the search and the cheapest board
 $depItems = New-Object System.Collections.ArrayList
 foreach ($key in $deps.Keys) {
     $parts = $key.Split('|')
@@ -570,7 +559,8 @@ foreach ($key in $deps.Keys) {
     $o = $parts[0].Split('-')[0]; $d = $parts[0].Split('-')[1]
     $daysOut = ($dep - $today).Days
     foreach ($fl in @($deps[$key].deps)) {
-        if (-not ([bool]$fl.gwOn) -or [double]$fl.gw -le 0) { continue }   # GoWild seats only
+        # Keep every flight (GoWild or not); the board filters to pass seats
+        # client-side, the search lists them all. gw is -1 when no pass seat.
         [void]$depItems.Add(@{
             o = $o; d = $d; dep = $parts[1]; daysOut = $daysOut
             dt = [string]$fl.dt; s = [int]$fl.s; fn = [string]$fl.fn
@@ -583,7 +573,6 @@ if ($depItems.Count -gt 0) { $depJson = ConvertTo-Json @($depItems) -Compress -D
 
 $searchJs = @'
 <script>
-var FW = __FWDATA__;
 var DEP = __DEPDATA__;
 var DEP_WIN = __DEPWIN__;
 var DEP_MAX = __DEPMAX__;
@@ -604,24 +593,26 @@ function showWatch(o, d, g){
 function doSearch(){
   updLive();
   var o = el('sFrom').value, d = el('sTo').value, ds = el('sDate').value, gwOnly = el('sGw').checked;
-  var rows = FW.filter(function(r){ return r.o === o && r.d === d && (!ds || r.dep === ds) && (!gwOnly || r.gc > 0); });
+  // Real individual flights for this route (and date, if given), cheapest first.
+  var rows = DEP.filter(function(r){ return r.o === o && r.d === d && (!ds || r.dep === ds) && (!gwOnly || r.gw > 0); });
   rows.sort(function(a, b){
-    var ag = a.gc > 0 ? a.g : 1e9, bg = b.gc > 0 ? b.g : 1e9;
-    return (ag - bg) || (a.cash - b.cash) || (a.dep < b.dep ? -1 : 1);
+    var ag = a.gw > 0 ? a.gw : 1e9, bg = b.gw > 0 ? b.gw : 1e9;
+    return (ag - bg) || (a.cash - b.cash) || (a.dep < b.dep ? -1 : (a.dep > b.dep ? 1 : 0)) || (a.dt < b.dt ? -1 : 1);
   });
   if (!rows.length) {
-    el('sResults').innerHTML = '<div class="empty">No swept data for ' + o + ' &rarr; ' + d + (ds ? ' on ' + ds : '') + (gwOnly ? ' with pass seats' : '') + ' yet. The route may still fly &mdash; use the live link above' + (gwOnly ? ', or uncheck &quot;pass seats only&quot;' : '') + '.</div>';
+    el('sResults').innerHTML = '<div class="empty">No flights found for ' + o + ' &rarr; ' + d + (ds ? ' on ' + ds : '') + (gwOnly ? ' with pass seats' : '') + ' in the latest data. Try another date' + (gwOnly ? ', turn off &quot;pass seats only&quot;,' : '') + ' or use the live link above &rarr;.</div>';
     return;
   }
-  var h = '<table><thead><tr><th>Route</th><th>Departs</th><th class="hide-sm">Cash</th><th>GoWild</th><th>Pass seats</th><th></th></tr></thead><tbody>';
-  rows.slice(0, 30).forEach(function(r){
-    h += '<tr class="row"><td><div class="route">' + r.o + ' <span>&rarr;</span> ' + r.d + '</div></td>'
-      + '<td class="num">' + r.dep + '</td>'
+  var h = '<table><thead><tr><th>Route</th><th>Departs</th><th>Stops</th><th>GoWild</th><th class="hide-sm">Cash</th><th></th></tr></thead><tbody>';
+  rows.slice(0, 60).forEach(function(r){
+    h += '<tr class="row"><td><div class="route">' + r.o + ' <span>&rarr;</span> ' + r.d + '</div>'
+      + '<span class="where hide-sm">' + r.fn + '</span></td>'
+      + '<td class="num">' + depTime(r.dt) + '<span class="delta">' + r.daysOut + 'd out</span></td>'
+      + '<td class="stops">' + (r.s === 0 ? 'nonstop' : r.s + ' stop' + (r.s > 1 ? 's' : '')) + '</td>'
+      + '<td class="num">' + (r.gw > 0 ? '<span class="gwbig">' + money(r.gw) + '</span>' : '<span class="delta">&mdash;</span>') + '</td>'
       + '<td class="num hide-sm">' + money(r.cash) + '</td>'
-      + '<td class="num">' + (r.gc > 0 ? '<span class="price">' + money(r.g) + '</span>' : '<span class="delta">&mdash;</span>') + '</td>'
-      + '<td class="num">' + (r.fc ? r.gc + '/' + r.fc : '<span class="delta">not swept</span>') + '</td>'
       + '<td><a class="rowbtn" target="_blank" rel="noopener" href="' + liveUrl(r.o, r.d, r.dep) + '">live</a> '
-      + '<button class="rowbtn" onclick="showWatch(\'' + r.o + '\',\'' + r.d + '\',' + (r.gc > 0 ? r.g : 60) + ')">watch</button></td></tr>';
+      + '<button class="rowbtn" onclick="showWatch(\'' + r.o + '\',\'' + r.d + '\',' + (r.gw > 0 ? r.gw : 60) + ')">watch</button></td></tr>';
   });
   h += '</tbody></table>';
   el('sResults').innerHTML = h;
@@ -637,7 +628,7 @@ var depHighFirst = false;
 function renderDeps(){
   var from = el('dFrom').value, nsOnly = el('dNs').checked, winOnly = el('dWin').checked;
   var rows = DEP.filter(function(r){
-    return (!from || r.o === from) && (!nsOnly || r.s === 0) && (!winOnly || r.daysOut <= DEP_WIN);
+    return r.gw > 0 && (!from || r.o === from) && (!nsOnly || r.s === 0) && (!winOnly || r.daysOut <= DEP_WIN);
   });
   rows.sort(function(a, b){
     return depHighFirst ? (b.gw - a.gw) || (a.dep < b.dep ? -1 : 1)
@@ -682,7 +673,7 @@ document.addEventListener('DOMContentLoaded', function(){
 });
 </script>
 '@
-[void]$sb.Append($searchJs.Replace('__FWDATA__', $fwJson).Replace('__DEPDATA__', $depJson).Replace('__DEPWIN__', [string]$window).Replace('__DEPMAX__', [string][int]$cfg.departuresTableRows))
+[void]$sb.Append($searchJs.Replace('__DEPDATA__', $depJson).Replace('__DEPWIN__', [string]$window).Replace('__DEPMAX__', [string][int]$cfg.departuresTableRows))
 [void]$sb.Append('</div></body></html>')
 
 $outPath = Get-FwPath 'dashboard.html'
