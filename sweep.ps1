@@ -280,6 +280,16 @@ if ($Demo) {
     Write-Output 'Demo history written.'
 } else {
     $usage = Read-FwUsage
+    # remember route-dates that returned no flights today so hourly runs
+    # do not burn budget re-checking days a route simply does not fly
+    $nullsPath = Get-FwPath 'data\noflights.json'
+    $nulls = @{}
+    if (Test-Path $nullsPath) {
+        $nj = Get-Content -Raw -Encoding UTF8 $nullsPath | ConvertFrom-Json
+        foreach ($p in $nj.PSObject.Properties) {
+            if ([string]$p.Value -eq $todayStr) { $nulls[$p.Name] = $todayStr }
+        }
+    }
     $monthlyRemaining = [int]$cfg.apiMonthlyBudget - [int]$usage.calls
     $budget = [int]$cfg.apiCallsPerRun
     if ($MaxCalls -gt 0) { $budget = $MaxCalls }
@@ -353,7 +363,8 @@ if ($Demo) {
             # per GoWild terms: domestic bookable 1 day out, international 10
             $cands = @($universe | Where-Object {
                 $_.daysOut -le (Get-FwGoWildWindow $cfg $_.o $_.d) -and
-                ($anyWatch -or $watched.ContainsKey(('{0}-{1}' -f $_.o, $_.d)))
+                ($anyWatch -or $watched.ContainsKey(('{0}-{1}' -f $_.o, $_.d))) -and
+                (-not $nulls.ContainsKey($_.key))
             })
             $slots = $cap - $rcExtra.Count
             if ($slots -lt 0) { $slots = 0 }
@@ -361,7 +372,31 @@ if ($Demo) {
             foreach ($x in $rcExtra) { $seenKeys[$x.key] = $true }
             $rest = @($cands | Where-Object { -not $seenKeys.ContainsKey($_.key) } |
                 Sort-Object { $_.daysOut } | Select-Object -First $slots)
-            $planned = @($rcExtra) + $rest
+            foreach ($x in $rest) { $seenKeys[$x.key] = $true }
+
+            # Fill remaining budget by rotating through EVERY tracked route's
+            # full next-10-days span (config + searched routes), stalest first,
+            # so no route's flexible-dates view goes a day without refresh.
+            $fillSlots = $cap - $seenKeys.Count
+            $fill = @()
+            if ($fillSlots -gt 0) {
+                $fillCands = New-Object System.Collections.ArrayList
+                foreach ($u in $universe) {
+                    if ($u.daysOut -gt 10) { continue }
+                    if ($seenKeys.ContainsKey($u.key)) { continue }
+                    if ($nulls.ContainsKey($u.key)) { continue }
+                    $lastD = ''
+                    if ($hist.ContainsKey($u.key)) {
+                        $uObs = $hist[$u.key]
+                        $lastD = [string]$uObs[$uObs.Count - 1].d
+                    }
+                    if ($lastD -eq $todayStr) { continue }   # already fresh today
+                    $u.lastD = $lastD
+                    [void]$fillCands.Add($u)
+                }
+                $fill = @($fillCands | Sort-Object { $_.lastD }, { $_.daysOut } | Select-Object -First $fillSlots)
+            }
+            $planned = @($rcExtra) + $rest + $fill
         }
     } else {
         # Daily mode: stalest first, with big bonuses for each route's own
@@ -392,6 +427,7 @@ if ($Demo) {
         if ($script:QuotaExhausted) { break }
         $newObs = Get-Observation $rd
         $usage.calls = [int]$usage.calls + 1
+        if ($null -eq $newObs) { $nulls[$rd.key] = $todayStr }
         if ($null -ne $newObs) {
             $newObs.d = $todayStr
             if (-not $hist.ContainsKey($rd.key)) { $hist[$rd.key] = New-Object System.Collections.ArrayList }
@@ -408,6 +444,7 @@ if ($Demo) {
     }
     Save-FwHistory $hist
     Save-FwUsage $usage
+    Write-FwUtf8 $nullsPath ($nulls | ConvertTo-Json -Compress)
     $note = ''
     if ($script:QuotaExhausted) { $note = 'provider returned 429 (quota) mid-sweep' }
     Save-FwMeta @{ lastSweepUtc = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'); provider = $Provider; note = $note }
