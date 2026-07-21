@@ -119,5 +119,16 @@ if ($rechecks.Count -gt 0) {
     foreach ($r in $rechecks) { [void]$pending.Add($r) }
     Write-FwUtf8 $rcPath (ConvertTo-Json @($pending) -Depth 4 -Compress)
     Write-Output ('intake: {0} fresh-check request(s) queued.' -f $rechecks.Count)
+
+    # promote searched routes into the daily rotation for the next 14 days
+    $extrasPath = Get-FwPath 'data\routes-extra.json'
+    $extras = @{}
+    if (Test-Path $extrasPath) {
+        $ex = Get-Content -Raw -Encoding UTF8 $extrasPath | ConvertFrom-Json
+        foreach ($p in $ex.PSObject.Properties) { $extras[$p.Name] = [string]$p.Value }
+    }
+    $todayStr = Get-Date -Format 'yyyy-MM-dd'
+    foreach ($r in $rechecks) { $extras[[string]$r.route] = $todayStr }
+    Write-FwUtf8 $extrasPath ($extras | ConvertTo-Json -Compress)
 }
 Write-Output ('intake: {0} new watch(es); {1} watches active.' -f $added, $list.Count)

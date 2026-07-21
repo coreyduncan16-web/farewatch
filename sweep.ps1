@@ -212,14 +212,37 @@ foreach ($k in @($hist.Keys)) {
 }
 
 $universe = New-Object System.Collections.ArrayList
+$knownKeys = @{}
 foreach ($o in @($cfg.origins)) {
     foreach ($d in @($cfg.destinations)) {
         for ($i = 0; $i -lt [int]$cfg.horizonDays; $i++) {
             $dep = $today.AddDays($i)
-            [void]$universe.Add(@{
-                key = ('{0}-{1}|{2}' -f $o, $d, $dep.ToString('yyyy-MM-dd'))
-                o = $o; d = $d; dep = $dep; daysOut = $i
-            })
+            $key = '{0}-{1}|{2}' -f $o, $d, $dep.ToString('yyyy-MM-dd')
+            $knownKeys[$key] = $true
+            [void]$universe.Add(@{ key = $key; o = $o; d = $d; dep = $dep; daysOut = $i })
+        }
+    }
+}
+
+# Routes people searched on the website stay in the rotation for 14 days
+# after their last request, so their next-10-days view keeps refreshing.
+$extrasPath = Get-FwPath 'data\routes-extra.json'
+if (Test-Path $extrasPath) {
+    $ex = Get-Content -Raw -Encoding UTF8 $extrasPath | ConvertFrom-Json
+    $cutoff = $today.AddDays(-14)
+    foreach ($p in $ex.PSObject.Properties) {
+        $rt = [string]$p.Name
+        if ($rt -notmatch '^[A-Z]{3}-[A-Z]{3}$') { continue }
+        $lastReq = $today
+        try { $lastReq = [datetime]::ParseExact([string]$p.Value, 'yyyy-MM-dd', $null) } catch { }
+        if ($lastReq -lt $cutoff) { continue }
+        $xo = $rt.Split('-')[0]; $xd = $rt.Split('-')[1]
+        for ($i = 0; $i -lt [int]$cfg.horizonDays; $i++) {
+            $dep = $today.AddDays($i)
+            $key = '{0}-{1}|{2}' -f $xo, $xd, $dep.ToString('yyyy-MM-dd')
+            if ($knownKeys.ContainsKey($key)) { continue }
+            $knownKeys[$key] = $true
+            [void]$universe.Add(@{ key = $key; o = $xo; d = $xd; dep = $dep; daysOut = $i })
         }
     }
 }
@@ -288,12 +311,12 @@ if ($Demo) {
                 $rt = [string]$rc.route
                 if ($rt -notmatch '^[A-Z]{3}-[A-Z]{3}$') { continue }
                 $ro = $rt.Split('-')[0]; $rdst = $rt.Split('-')[1]
+                # always cover the full next 10 days so the flexible-dates view
+                # has the whole span; add the specifically requested date too
+                $dates = @()
+                for ($k = 0; $k -le 10; $k++) { $dates += $today.AddDays($k) }
                 if ([string]$rc.date -match '^\d{4}-\d{2}-\d{2}$') {
-                    $dates = @([datetime]::ParseExact([string]$rc.date, 'yyyy-MM-dd', $null))
-                } else {
-                    # no date given: scan the whole route across the next 10 days
-                    $dates = @()
-                    for ($k = 0; $k -le 10; $k++) { $dates += $today.AddDays($k) }
+                    try { $dates += [datetime]::ParseExact([string]$rc.date, 'yyyy-MM-dd', $null) } catch { }
                 }
                 foreach ($dt in $dates) {
                     if ($dt -lt $today -or ($dt - $today).Days -gt [int]$cfg.horizonDays) { continue }

@@ -94,8 +94,22 @@ if ($nToken -and $nSite) {
         } catch { }
 
         $body = @{ files = $files; functions = $functions } | ConvertTo-Json -Depth 4
-        $dep = Invoke-RestMethod -Method Post -Uri ('https://api.netlify.com/api/v1/sites/{0}/deploys' -f $nSite) `
-            -Headers $auth -ContentType 'application/json' -Body $body -TimeoutSec 120
+        # Netlify rate-limits deploy creation when we publish rapidly; wait and retry
+        $dep = $null
+        for ($try = 1; $try -le 3; $try++) {
+            try {
+                $dep = Invoke-RestMethod -Method Post -Uri ('https://api.netlify.com/api/v1/sites/{0}/deploys' -f $nSite) `
+                    -Headers $auth -ContentType 'application/json' -Body $body -TimeoutSec 120
+                break
+            } catch {
+                $code = 0
+                try { $code = [int]$_.Exception.Response.StatusCode } catch { }
+                if (($code -eq 403 -or $code -eq 429) -and $try -lt 3) {
+                    Write-Output ('publish: Netlify rate limit, waiting 75s (attempt {0}/3)...' -f $try)
+                    Start-Sleep -Seconds 75
+                } else { throw }
+            }
+        }
 
         foreach ($sha in @($dep.required)) {
             foreach ($entry in @($byHash[$sha])) {
