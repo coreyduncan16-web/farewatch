@@ -16,6 +16,7 @@
   "apiCallsPerRun": 120,
   "cashTableRows": 22,
   "goWildTableRows": 16,
+  "departuresTableRows": 40,
   "airports": {
     "ATL": { "city": "Atlanta", "country": "" },
     "DEN": { "city": "Denver", "country": "" },

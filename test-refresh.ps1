@@ -50,6 +50,25 @@ Assert ((Get-StaleHours $null      $now) -ge $min) "never-seen route is always e
 $dateOnlyYesterday = @{ d = (Get-Date).AddDays(-1).ToString('yyyy-MM-dd'); p = 100 }
 Assert ((Get-StaleHours $dateOnlyYesterday $now) -ge $min) "legacy date-only record from yesterday is eligible"
 
+# --- 3. Departures snapshot round-trips through save/read -----------------
+$depStore = @{
+    'ATL-CUN|2026-09-01' = @{
+        t = $stamp
+        deps = @(
+            @{ dt = '2026-09-01T06:05:00'; at = '2026-09-01T08:40:00'; s = 0; fn = 'F9 100'; cash = 129; gw = 16.00; gwOn = $true },
+            @{ dt = '2026-09-01T13:40:00'; at = '2026-09-01T18:10:00'; s = 1; fn = 'F9 210 / F9 55'; cash = 210; gw = -1; gwOn = $false }
+        )
+    }
+}
+Save-FwDepartures $depStore
+$depBack = Read-FwDepartures
+$entry = $depBack['ATL-CUN|2026-09-01']
+Assert ($null -ne $entry) 'departures entry survives round-trip'
+Assert (@($entry.deps).Count -eq 2) 'both departures preserved'
+$d0 = @($entry.deps)[0]
+Assert ($d0.gwOn -and [double]$d0.gw -eq 16.00) 'GoWild departure keeps its all-in total'
+Assert ([int]$d0.s -eq 0 -and [string]$d0.fn -eq 'F9 100') 'stops and flight numbers preserved'
+
 Remove-Item -Recurse -Force $tmp
 Write-Output ''
 if ($fail -eq 0) { Write-Output 'ALL TESTS PASSED'; exit 0 }

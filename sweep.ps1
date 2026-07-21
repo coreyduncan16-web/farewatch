@@ -36,6 +36,9 @@ if ($cfg.PSObject.Properties['minRefreshHours']) { $minRefreshHours = [double]$c
 
 $script:AmadeusToken = $null
 $script:QuotaExhausted = $false
+# Set by Get-Observation to the per-departure snapshot for the route-date it just
+# priced (frontier provider only); the sweep loop reads it into the deps store.
+$script:CurrentDeps = $null
 
 # Aggregates one route-date from flyfrontier.com (via Get-FrontierFlightData
 # in common.ps1). Returns @{ cash; gw; gwCount; flightCount; gwNonstop } or
@@ -54,7 +57,7 @@ function Get-FrontierFares([string]$o, [string]$d, [datetime]$dep) {
         }
     }
     if ($null -eq $cash) { return $null }
-    @{ cash = $cash; gw = $gw; gwCount = $gwCount; flightCount = @($flights).Count; gwNonstop = $gwNonstop }
+    @{ cash = $cash; gw = $gw; gwCount = $gwCount; flightCount = @($flights).Count; gwNonstop = $gwNonstop; flights = $flights }
 }
 
 function Get-AmadeusBase {
@@ -138,12 +141,29 @@ function Get-Fare([string]$o, [string]$d, [string]$date) {
 
 # One observation for a route-date, shaped for the history store.
 function Get-Observation($rd) {
+    $script:CurrentDeps = $null
     if ($Provider -eq 'frontier') {
         $f = Get-FrontierFares $rd.o $rd.d $rd.dep
         Start-Sleep -Milliseconds ([int]$cfg.frontierSleepMs)
         if ($null -eq $f) { return $null }
         $g = -1.0
         if ($null -ne $f.gw) { $g = [Math]::Round([double]$f.gw, 2) }
+        # Snapshot every departure for the cheapest-first board (latest only).
+        $deps = New-Object System.Collections.ArrayList
+        foreach ($fl in @($f.flights)) {
+            $fgw = -1.0
+            if ($fl.gwOn -and [double]$fl.gw -gt 0) { $fgw = [Math]::Round([double]$fl.gw, 2) }
+            [void]$deps.Add(@{
+                dt   = ([datetime]$fl.depTime).ToString('yyyy-MM-ddTHH:mm:ss')
+                at   = ([datetime]$fl.arrTime).ToString('yyyy-MM-ddTHH:mm:ss')
+                s    = [int]$fl.stops
+                fn   = [string]$fl.flightNums
+                cash = [Math]::Round([double]$fl.cash, 0)
+                gw   = $fgw
+                gwOn = [bool]$fl.gwOn
+            })
+        }
+        $script:CurrentDeps = @($deps)
         return @{
             p = [Math]::Round([double]$f.cash, 0)
             g = $g; gc = [int]$f.gwCount; fc = [int]$f.flightCount; gn = [int]$f.gwNonstop
@@ -262,6 +282,17 @@ if ($Demo) {
     Write-Output 'Demo history written.'
 } else {
     $usage = Read-FwUsage
+
+    # Latest per-departure snapshot store (frontier only), pruned of past dates.
+    $depStore = @{}
+    if ($Provider -eq 'frontier') {
+        $depStore = Read-FwDepartures
+        foreach ($k in @($depStore.Keys)) {
+            $dep = [datetime]::ParseExact($k.Split('|')[1], 'yyyy-MM-dd', $null)
+            if ($dep -lt $today) { $depStore.Remove($k) }
+        }
+    }
+
     $budget = [int]$cfg.apiCallsPerRun
     if ($MaxCalls -gt 0) { $budget = $MaxCalls }
     # The frontier provider scrapes the public site (no paid quota), so only the
@@ -326,12 +357,19 @@ if ($Demo) {
             }
             [void]$obs.Add($newObs)
             while ($obs.Count -gt 90) { $obs.RemoveAt(0) }
+            if ($Provider -eq 'frontier' -and $null -ne $script:CurrentDeps) {
+                $depStore[$rd.key] = @{ t = $newObs.t; deps = $script:CurrentDeps }
+            }
             $got++
         }
-        if (($usage.calls % 10) -eq 0) { Save-FwHistory $hist; Save-FwUsage $usage }
+        if (($usage.calls % 10) -eq 0) {
+            Save-FwHistory $hist; Save-FwUsage $usage
+            if ($Provider -eq 'frontier') { Save-FwDepartures $depStore }
+        }
     }
     Save-FwHistory $hist
     Save-FwUsage $usage
+    if ($Provider -eq 'frontier') { Save-FwDepartures $depStore }
     $note = ''
     if ($script:QuotaExhausted) { $note = 'provider returned 429 (quota) mid-sweep' }
     Save-FwMeta @{ lastSweepUtc = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'); provider = $Provider; note = $note }

@@ -150,3 +150,38 @@ function Save-FwMeta($m) {
     Ensure-FwDataDir
     Write-FwUtf8 (Get-FwPath 'data\meta.json') ($m | ConvertTo-Json -Compress)
 }
+
+# --------------------------------------------------------------- departures --
+# Latest per-departure snapshot for each route-date, powering the cheapest-first
+# board. Only the most recent sweep of each route-date is kept (latest snapshot,
+# not history), so this file stays small.
+#   "ORG-DST|yyyy-MM-dd" -> @{ t = pricedUtc; deps = @( @{ dt; at; s; fn; cash; gw; gwOn } ) }
+# where dt/at are local ISO times, s = stops, fn = flight numbers, cash = fare,
+# gw = all-in GoWild total (-1 when no pass seat), gwOn = GoWild offered.
+function Read-FwDepartures {
+    $h = @{}
+    $p = Get-FwPath 'data\departures.json'
+    if (Test-Path $p) {
+        $obj = Get-Content -Raw -Encoding UTF8 $p | ConvertFrom-Json
+        foreach ($prop in $obj.PSObject.Properties) {
+            $entry = $prop.Value
+            $deps = New-Object System.Collections.ArrayList
+            foreach ($dp in @($entry.deps)) {
+                [void]$deps.Add(@{
+                    dt = [string]$dp.dt; at = [string]$dp.at; s = [int]$dp.s
+                    fn = [string]$dp.fn; cash = [double]$dp.cash
+                    gw = [double]$dp.gw; gwOn = [bool]$dp.gwOn
+                })
+            }
+            $h[$prop.Name] = @{ t = [string]$entry.t; deps = @($deps) }
+        }
+    }
+    $h
+}
+
+function Save-FwDepartures($store) {
+    Ensure-FwDataDir
+    $out = New-Object System.Collections.Specialized.OrderedDictionary
+    foreach ($k in ($store.Keys | Sort-Object)) { $out[$k] = $store[$k] }
+    Write-FwUtf8 (Get-FwPath 'data\departures.json') ($out | ConvertTo-Json -Depth 6 -Compress)
+}

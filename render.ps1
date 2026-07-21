@@ -10,6 +10,7 @@ $ErrorActionPreference = 'Stop'
 
 $cfg   = Read-FwConfig
 $hist  = Read-FwHistory
+$deps  = Read-FwDepartures
 $usage = Read-FwUsage
 $meta  = Read-FwMeta
 $today = (Get-Date).Date
@@ -394,6 +395,25 @@ tr.row{opacity:0;animation:in .34s ease forwards}
   padding:3px 8px;border:1px solid var(--rule);background:var(--panel);
   color:var(--dim);cursor:pointer;text-decoration:none;display:inline-block}
 .rowbtn:hover{border-color:var(--buy);color:var(--buy)}
+
+/* cheapest-departures board */
+.depctl{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 14px}
+.depctl .seg{display:flex;border:1px solid var(--rule);background:var(--panel)}
+.depctl .seg button{font-family:"IBM Plex Mono",monospace;font-size:11px;
+  letter-spacing:.07em;padding:6px 12px;border:none;background:transparent;
+  color:var(--dim);cursor:pointer}
+.depctl .seg button.on{background:var(--buy);color:#fff}
+.depctl label{display:flex;align-items:center;gap:6px;
+  font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.06em;
+  color:var(--dim)}
+.depctl select{font-family:"IBM Plex Mono",monospace;font-size:12px;padding:6px 8px;
+  border:1px solid var(--rule);background:var(--panel);color:var(--ink)}
+.depctl .count{margin-left:auto;font-family:"IBM Plex Mono",monospace;
+  font-size:11px;color:var(--dim)}
+.gwbig{font-size:16px;font-weight:600;color:var(--buy)}
+.rank{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--dim);
+  width:2.4em;text-align:right}
+.stops{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--dim)}
 footer{margin-top:40px;padding-top:16px;border-top:1px solid var(--rule);
   font-size:12px;color:var(--dim);max-width:74ch}
 footer b{color:var(--ink);font-weight:600}
@@ -491,6 +511,31 @@ if ($gwRows.Count -eq 0) {
 }
 [void]$sb.Append('</section>' + "`n")
 
+# cheapest-departures board (client-rendered from the departures snapshot)
+$depOriginCodes = @($deps.Keys | ForEach-Object { $_.Split('|')[0].Split('-')[0] } | Sort-Object -Unique)
+$depFromOpts = '<option value="">all origins</option>'
+foreach ($c in $depOriginCodes) { $depFromOpts += ('<option value="{0}">{0} - {1}</option>' -f $c, (CityOf $c)) }
+$depHtml = @'
+<section id="depsec">
+  <h2>Cheapest departures &mdash; every seat, low to high</h2>
+  <p class="sub">Every individual GoWild-eligible departure across all tracked
+  routes and dates, ranked by all-in pass total. The cheapest seats sit at the
+  top &mdash; watch how the same fare recurs across flights and days to see how
+  hopping the network works. Snapshot from the last sweep; confirm live before
+  booking.</p>
+  <div class="depctl">
+    <div class="seg"><button id="dLow" class="on">LOW &rarr; HIGH</button><button id="dHigh">HIGH &rarr; LOW</button></div>
+    <label>From<select id="dFrom">__DEPFROMOPTS__</select></label>
+    <label><input type="checkbox" id="dNs"> nonstop only</label>
+    <label><input type="checkbox" id="dWin"> in GoWild window</label>
+    <span class="count" id="dCount"></span>
+  </div>
+  <div id="depResults"></div>
+</section>
+
+'@
+[void]$sb.Append($depHtml.Replace('__DEPFROMOPTS__', $depFromOpts))
+
 [void]$sb.Append(@'
 
 <footer>
@@ -516,9 +561,32 @@ foreach ($r in @($records | Sort-Object @{ Expression = { $_.key } })) {
 $fwJson = '[]'
 if ($fwItems.Count -gt 0) { $fwJson = ConvertTo-Json @($fwItems) -Compress -Depth 3 }
 
+# flattened per-departure rows for the cheapest-first board
+$depItems = New-Object System.Collections.ArrayList
+foreach ($key in $deps.Keys) {
+    $parts = $key.Split('|')
+    $dep = [datetime]::ParseExact($parts[1], 'yyyy-MM-dd', $null)
+    if ($dep -lt $today) { continue }
+    $o = $parts[0].Split('-')[0]; $d = $parts[0].Split('-')[1]
+    $daysOut = ($dep - $today).Days
+    foreach ($fl in @($deps[$key].deps)) {
+        if (-not ([bool]$fl.gwOn) -or [double]$fl.gw -le 0) { continue }   # GoWild seats only
+        [void]$depItems.Add(@{
+            o = $o; d = $d; dep = $parts[1]; daysOut = $daysOut
+            dt = [string]$fl.dt; s = [int]$fl.s; fn = [string]$fl.fn
+            cash = [int][Math]::Round([double]$fl.cash); gw = [Math]::Round([double]$fl.gw, 2)
+        })
+    }
+}
+$depJson = '[]'
+if ($depItems.Count -gt 0) { $depJson = ConvertTo-Json @($depItems) -Compress -Depth 3 }
+
 $searchJs = @'
 <script>
 var FW = __FWDATA__;
+var DEP = __DEPDATA__;
+var DEP_WIN = __DEPWIN__;
+var DEP_MAX = __DEPMAX__;
 var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function el(i){ return document.getElementById(i); }
 function money(v){ return (v == null || v < 0) ? '&mdash;' : '$' + Number(v).toFixed(2); }
@@ -558,15 +626,63 @@ function doSearch(){
   h += '</tbody></table>';
   el('sResults').innerHTML = h;
 }
+function depTime(dt){
+  // dt is 'yyyy-MM-ddTHH:mm:ss' local; show 'MMM d, h:mma'
+  var p = dt.split('T'); if (p.length < 2) { return dt; }
+  var d = p[0].split('-'), t = p[1].split(':');
+  var hh = +t[0], ap = hh < 12 ? 'a' : 'p', h12 = ((hh + 11) % 12) + 1;
+  return MONTHS[+d[1]-1] + ' ' + (+d[2]) + ', ' + h12 + ':' + t[1] + ap;
+}
+var depHighFirst = false;
+function renderDeps(){
+  var from = el('dFrom').value, nsOnly = el('dNs').checked, winOnly = el('dWin').checked;
+  var rows = DEP.filter(function(r){
+    return (!from || r.o === from) && (!nsOnly || r.s === 0) && (!winOnly || r.daysOut <= DEP_WIN);
+  });
+  rows.sort(function(a, b){
+    return depHighFirst ? (b.gw - a.gw) || (a.dep < b.dep ? -1 : 1)
+                        : (a.gw - b.gw) || (a.dep < b.dep ? -1 : 1);
+  });
+  el('dCount').textContent = rows.length + ' departures';
+  if (!rows.length) {
+    el('depResults').innerHTML = '<div class="empty">No GoWild-eligible departures in the last snapshot' + (from ? ' from ' + from : '') + (nsOnly ? ', nonstop' : '') + (winOnly ? ', in window' : '') + '. Run a sweep, or relax the filters.</div>';
+    return;
+  }
+  var h = '<table><thead><tr><th>#</th><th>Route</th><th>Departs</th><th>Stops</th><th>GoWild</th><th class="hide-sm">Cash</th><th></th></tr></thead><tbody>';
+  rows.slice(0, DEP_MAX).forEach(function(r, i){
+    h += '<tr class="row"><td class="rank">' + (i + 1) + '</td>'
+      + '<td><div class="route">' + r.o + ' <span>&rarr;</span> ' + r.d + '</div>'
+      + '<span class="where hide-sm">' + r.fn + '</span></td>'
+      + '<td class="num">' + depTime(r.dt) + '<span class="delta">' + r.daysOut + 'd out</span></td>'
+      + '<td class="stops">' + (r.s === 0 ? 'nonstop' : r.s + ' stop' + (r.s > 1 ? 's' : '')) + '</td>'
+      + '<td class="num"><span class="gwbig">' + money(r.gw) + '</span><span class="delta">all-in</span></td>'
+      + '<td class="num hide-sm">' + money(r.cash) + '</td>'
+      + '<td><a class="rowbtn" target="_blank" rel="noopener" href="' + liveUrl(r.o, r.d, r.dep) + '">live</a></td></tr>';
+  });
+  h += '</tbody></table>';
+  el('depResults').innerHTML = h;
+}
+function setDepDir(high){
+  depHighFirst = high;
+  el('dLow').className = high ? '' : 'on';
+  el('dHigh').className = high ? 'on' : '';
+  renderDeps();
+}
 document.addEventListener('DOMContentLoaded', function(){
   el('sGo').onclick = doSearch;
   ['sFrom','sTo','sDate','sGw'].forEach(function(i){ el(i).onchange = updLive; });
   updLive();
   doSearch();
+  if (el('depResults')) {
+    el('dLow').onclick = function(){ setDepDir(false); };
+    el('dHigh').onclick = function(){ setDepDir(true); };
+    ['dFrom','dNs','dWin'].forEach(function(i){ el(i).onchange = renderDeps; });
+    renderDeps();
+  }
 });
 </script>
 '@
-[void]$sb.Append($searchJs.Replace('__FWDATA__', $fwJson))
+[void]$sb.Append($searchJs.Replace('__FWDATA__', $fwJson).Replace('__DEPDATA__', $depJson).Replace('__DEPWIN__', [string]$window).Replace('__DEPMAX__', [string][int]$cfg.departuresTableRows))
 [void]$sb.Append('</div></body></html>')
 
 $outPath = Get-FwPath 'dashboard.html'

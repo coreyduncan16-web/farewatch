@@ -174,14 +174,14 @@ API) — a later upgrade if you want it.
 | `config.json` | Routes, hubs, horizon, thresholds, budgets, provider choice |
 | `.env` | Keys + SMTP settings (never committed) |
 | `sweep.ps1` | Fetches fares, updates history, renders, fires alerts |
-| `render.ps1` | Rebuilds `dashboard.html` (incl. search bar) from history |
+| `render.ps1` | Rebuilds `dashboard.html` (search bar + cheapest-departures board) from history |
 | `plan.ps1` | Trip planner: cheapest routing A→B within budget |
 | `alerts.ps1` | GoWild price-drop email/text alerts (`-Test` to dry-run) |
 | `watches.json` | Your alert rules (gitignored) |
 | `publish.ps1` | Copies dashboard to `docs\index.html`, commits, pushes |
 | `run-daily.ps1` | sweep → publish; what the scheduled task runs |
 | `common.ps1` | Shared helpers incl. the flyfrontier.com fetcher |
-| `data\` | History, usage, alert ledger (gitignored) |
+| `data\` | History, departures snapshot, usage, alert ledger (gitignored) |
 | `docs\index.html` | The published site (GitHub Pages serves this) |
 
 ## How the signals work
@@ -196,6 +196,13 @@ API) — a later upgrade if you want it.
   flights had pass seats at sweep time (e.g. `3/15`). Rows the sweep hasn't
   reached yet fall back to a labeled proxy score (soft cash fare + Tue/Wed
   departure + release-window proximity).
+- The **Cheapest departures** board flattens every individual GoWild-eligible
+  flight from the last sweep across all tracked routes and dates, ranked by
+  all-in pass total (toggle low&harr;high, filter by origin / nonstop / in
+  window). It reads `data\departures.json`, a latest-snapshot-per-route-date
+  store the sweep writes for the `frontier` provider &mdash; the cheapest seats
+  bubble to the top so you can see where the cheap hops line up. Cap the row
+  count with `departuresTableRows` in config.json.
 - Many of these routes don't fly daily — a route-date that returns no
   flights is simply skipped, so gaps in the tables usually mean "no service
   that day", not missing data.
