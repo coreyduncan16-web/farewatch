@@ -24,6 +24,8 @@
     "emailEntry": "",
     "routeEntry": "",
     "priceEntry": "",
+    "fromEntry": "",
+    "toEntry": "",
     "csvUrl": "",
     "fallbackEmail": "coreyduncan16@gmail.com"
   },

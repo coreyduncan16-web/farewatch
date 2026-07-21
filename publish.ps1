@@ -43,9 +43,14 @@ if ($remote) {
     Write-Output 'publish: committed locally. No GitHub remote configured yet - see README section "Hosting it for everyone".'
 }
 
-# --- Netlify direct upload (outage-proof path) ---
-# Uses the file-digest deploy API so the live-search function deploys too
-# (the simple zip method only handles static files).
+# --- Netlify direct upload (DISABLED - hosting is GitHub Pages only) ---
+# Netlify free-tier deploys hit a credit wall; we host on GitHub Pages instead.
+# Set config useNetlify=true only if you ever move back. Netlify Forms (a
+# separate free feature) is unaffected by this and handled elsewhere.
+$cfgPub = Read-FwConfig
+if (-not ($cfgPub.PSObject.Properties['useNetlify'] -and [bool]$cfgPub.useNetlify)) {
+    return
+}
 $secrets = Read-FwEnv
 $nToken = $secrets['NETLIFY_TOKEN']
 $nSite  = $secrets['NETLIFY_SITE_ID']

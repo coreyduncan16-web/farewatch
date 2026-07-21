@@ -640,7 +640,24 @@ var FWSWEPT = '__FWSWEPT__';
 // Netlify Forms endpoint. Form PROCESSING works even when deploys are throttled,
 // and works cross-origin, so the GitHub Pages mirror can submit here too.
 var FWPOST = 'https://frontierflight.netlify.app/';
-function fwPostForm(params){
+// Submit intake. Prefers the Google Form (FWFORM.action set) = unlimited free,
+// no Netlify. Falls back to Netlify Forms cross-origin during transition.
+// fields: { email, route, maxprice, datefrom, dateto }  (email blank = recheck)
+function fwSubmit(fields){
+  if (FWFORM.action) {
+    var fd = new FormData();
+    if (FWFORM.emailEntry) fd.append(FWFORM.emailEntry, fields.email || '');
+    if (FWFORM.routeEntry) fd.append(FWFORM.routeEntry, fields.route || '');
+    if (FWFORM.priceEntry) fd.append(FWFORM.priceEntry, fields.maxprice || '');
+    if (FWFORM.fromEntry) fd.append(FWFORM.fromEntry, fields.datefrom || '');
+    if (FWFORM.toEntry) fd.append(FWFORM.toEntry, fields.dateto || '');
+    return fetch(FWFORM.action, { method: 'POST', mode: 'no-cors', body: fd });
+  }
+  var kind = (fields.email ? 'watch' : 'recheck');
+  var params = 'form-name=' + kind + '&email=' + encodeURIComponent(fields.email || '')
+    + '&route=' + encodeURIComponent(fields.route || '') + '&maxprice=' + encodeURIComponent(fields.maxprice || '')
+    + '&datefrom=' + encodeURIComponent(fields.datefrom || '') + '&dateto=' + encodeURIComponent(fields.dateto || '')
+    + '&date=' + encodeURIComponent(fields.date || '');
   return fetch(FWPOST, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params });
 }
 var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -681,19 +698,9 @@ function submitWatch(){
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { el('wMsg').textContent = 'Please enter a valid email address.'; return; }
   if (!/^([A-Z]{3}-[A-Z]{3}|ANY)$/.test(rt)) { el('wMsg').textContent = 'Route must look like MCO-PUJ (airport codes), or ANY.'; return; }
   if (df && dt && df > dt) { el('wMsg').textContent = 'Travel-from date is after travel-to date.'; return; }
-  if (FWFORM.action) {
-    var fd = new FormData();
-    fd.append(FWFORM.emailEntry, em);
-    fd.append(FWFORM.routeEntry, rt);
-    fd.append(FWFORM.priceEntry, mx);
-    fetch(FWFORM.action, { method: 'POST', mode: 'no-cors', body: fd });
-    el('wMsg').textContent = 'You are on the list! ' + rt + ' will be checked hourly; one email lands when the GoWild total is $' + mx + ' or less.';
-    el('wEmail').value = '';
-  } else if (location.protocol !== 'file:') {
-    var params = 'form-name=watch&email=' + encodeURIComponent(em) + '&route=' + encodeURIComponent(rt) + '&maxprice=' + encodeURIComponent(mx)
-      + '&datefrom=' + encodeURIComponent(df) + '&dateto=' + encodeURIComponent(dt);
+  if (FWFORM.action || location.protocol !== 'file:') {
     var range = (df || dt) ? (' for travel ' + (df || 'now') + ' to ' + (dt || 'anytime')) : '';
-    fwPostForm(params)
+    fwSubmit({ email: em, route: rt, maxprice: mx, datefrom: df, dateto: dt })
       .then(function(){ el('wMsg').textContent = 'You are on the list! ' + rt + range + ' - checked hourly; one email lands when the GoWild total is $' + mx + ' or less.'; el('wEmail').value = ''; })
       .catch(function(){ el('wMsg').textContent = 'Signup hiccup - try again in a minute.'; });
   } else {
@@ -719,8 +726,7 @@ function autoQueue(o, d, ds, pair){
     }
     localStorage.setItem(key, String(Date.now()));
   } catch (e) { }
-  var params = 'form-name=recheck&route=' + encodeURIComponent(o + '-' + d) + '&date=' + encodeURIComponent(ds || '');
-  fwPostForm(params)
+  fwSubmit({ route: o + '-' + d, date: ds || '' })
     .then(function(){
       el('sQueueNote').innerHTML = '<p class="sub">&#9889; LIVE sweep started for ' + o + ' &rarr; ' + d + (ds ? ' on ' + ds : ' (next 10 days)') + ' &mdash; real prices usually land in 2-4 minutes. This page checks for them every 30 seconds and updates itself.</p>';
     })
@@ -925,6 +931,8 @@ $formCfg = @{
     emailEntry = [string]$cfg.watchIntake.emailEntry
     routeEntry = [string]$cfg.watchIntake.routeEntry
     priceEntry = [string]$cfg.watchIntake.priceEntry
+    fromEntry = [string]$cfg.watchIntake.fromEntry
+    toEntry = [string]$cfg.watchIntake.toEntry
     fallback = [string]$cfg.watchIntake.fallbackEmail
 }
 [void]$sb.Append($searchJs.Replace('__FWDATA__', $fwJson).Replace('__FWFORM__', ($formCfg | ConvertTo-Json -Compress)).Replace('__FWSWEPT__', [string]$meta.lastSweepUtc))

@@ -90,22 +90,44 @@ if ($nToken -and $nSite) {
     }
 }
 
-# --- source 2: optional Google Form CSV (legacy path, if configured) ---
+# --- source 2: Google Form responses (unlimited free intake, no Netlify) ---
+# Published-CSV columns, in order: Timestamp, Email, Route, Max price,
+# Travel from, Travel to. Row meaning is inferred:
+#   * a valid Email  -> a price-alert signup (watch)
+#   * blank Email + valid Route -> a search-triggered fresh-sweep (recheck)
+#   * Route = UNSUB (with Email) -> unsubscribe that email
+# A row-count cursor (data\intake-cursor.txt) means each response is acted on
+# once even though the sheet keeps every response forever.
 $csvUrl = [string]$cfg.watchIntake.csvUrl
 if ($csvUrl -ne '') {
     try {
         $raw = (Invoke-WebRequest -Uri $csvUrl -UseBasicParsing -TimeoutSec 60).Content
         $rows = @($raw | ConvertFrom-Csv)
+        $cursorPath = Get-FwPath 'data\intake-cursor.txt'
+        $startAt = 0
+        if (Test-Path $cursorPath) { try { $startAt = [int](Get-Content -Raw $cursorPath) } catch { $startAt = 0 } }
+        if ($rows.Count -lt $startAt) { $startAt = 0 }   # sheet shrank/reset
         if ($rows.Count -gt 0) {
             $cols = @($rows[0].PSObject.Properties.Name)
-            foreach ($row in $rows) {
-                $maxRaw = ''
-                if ($cols.Count -gt 3) { $maxRaw = [string]$row.($cols[3]) }
-                Add-Watch ([string]$row.($cols[1])) ([string]$row.($cols[2])) $maxRaw
+            for ($ri = $startAt; $ri -lt $rows.Count; $ri++) {
+                $row = $rows[$ri]
+                $email = if ($cols.Count -gt 1) { ([string]$row.($cols[1])).Trim() } else { '' }
+                $route = if ($cols.Count -gt 2) { ([string]$row.($cols[2])).Trim().ToUpper() } else { '' }
+                $maxRaw = if ($cols.Count -gt 3) { [string]$row.($cols[3]) } else { '' }
+                $df = if ($cols.Count -gt 4) { [string]$row.($cols[4]) } else { '' }
+                $dt = if ($cols.Count -gt 5) { [string]$row.($cols[5]) } else { '' }
+                if ($route -eq 'UNSUB' -and $email -match '^[^@\s]+@[^@\s]+\.[^@\s]+$') {
+                    $unsubEmails[$email.ToLower()] = $true
+                } elseif ($email -match '^[^@\s]+@[^@\s]+\.[^@\s]+$') {
+                    Add-Watch $email $route $maxRaw $df $dt
+                } elseif ($route -match '^[A-Z]{3}-[A-Z]{3}$') {
+                    [void]$rechecks.Add(@{ route = $route; date = ''; added = (Get-Date -Format 's') })
+                }
             }
         }
+        Write-FwUtf8 $cursorPath ([string]$rows.Count)
     } catch {
-        Write-Output ('intake: could not fetch signup sheet: ' + $_.Exception.Message)
+        Write-Output ('intake: could not fetch Google Form responses: ' + $_.Exception.Message)
     }
 }
 
