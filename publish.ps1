@@ -26,8 +26,11 @@ if (-not (Test-Path (Join-Path $root 'dashboard.html'))) {
 $docs = Join-Path $root 'docs'
 if (-not (Test-Path $docs)) { New-Item -ItemType Directory -Path $docs | Out-Null }
 Copy-Item (Join-Path $root 'dashboard.html') (Join-Path $docs 'index.html') -Force
+# tiny freshness beacon the page polls to know a live sweep just landed
+$metaSrc = Join-Path $root 'data\meta.json'
+if (Test-Path $metaSrc) { Copy-Item $metaSrc (Join-Path $docs 'meta.json') -Force }
 
-& $git add docs/index.html
+& $git add docs
 & $git commit -m $Message 2>$null
 if ($LASTEXITCODE -ne 0) { Write-Output 'publish: nothing new to commit.' }
 

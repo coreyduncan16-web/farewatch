@@ -83,6 +83,24 @@ function Save-FwUsage($u) {
     Write-FwUtf8 (Get-FwPath 'data\usage.json') ($u | ConvertTo-Json -Compress)
 }
 
+# Simple cross-run lock so the 2-minute quick-queue and the hourly/daily
+# sweeps do not stomp each other's history writes. Stale locks (>10 min)
+# are treated as abandoned.
+function Get-FwLock([int]$maxAgeMinutes = 10) {
+    Ensure-FwDataDir
+    $p = Get-FwPath 'data\run.lock'
+    if (Test-Path $p) {
+        $age = (Get-Date) - (Get-Item $p).LastWriteTime
+        if ($age.TotalMinutes -lt $maxAgeMinutes) { return $false }
+    }
+    Set-Content -Path $p -Value ([string](Get-Date)) -Encoding ASCII
+    $true
+}
+function Release-FwLock {
+    $p = Get-FwPath 'data\run.lock'
+    if (Test-Path $p) { Remove-Item $p -Force -ErrorAction SilentlyContinue }
+}
+
 # ---------------------------------------------------------------- frontier --
 
 $script:FwUA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'

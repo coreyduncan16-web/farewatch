@@ -611,6 +611,7 @@ $searchJs = @'
 <script>
 var FW = __FWDATA__;
 var FWFORM = __FWFORM__;
+var FWSWEPT = '__FWSWEPT__';
 var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function el(i){ return document.getElementById(i); }
 function money(v){ return (v == null || v < 0) ? '&mdash;' : '$' + Number(v).toFixed(2); }
@@ -680,8 +681,37 @@ function autoQueue(o, d, ds, pair){
   } catch (e) { }
   var params = 'form-name=recheck&route=' + encodeURIComponent(o + '-' + d) + '&date=' + encodeURIComponent(ds || '');
   fetch('/', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params })
-    .then(function(){ el('sQueueNote').innerHTML = '<p class="sub">&#10003; Fresh sweep queued for ' + o + ' &rarr; ' + d + (ds ? ' on ' + ds : ' (next 10 days)') + ' &mdash; prices here update within the hour.</p>'; })
+    .then(function(){
+      el('sQueueNote').innerHTML = '<p class="sub">&#9889; LIVE sweep started for ' + o + ' &rarr; ' + d + (ds ? ' on ' + ds : ' (next 10 days)') + ' &mdash; real prices usually land in 2-4 minutes. This page updates itself, just hang tight.</p>';
+      startPoll(o, d, ds);
+    })
     .catch(function(){ });
+}
+
+// After queueing, watch the site's freshness beacon; when the sweep lands,
+// reload and re-run the same search automatically.
+var pollTimer = null;
+function startPoll(o, d, ds){
+  if (pollTimer) { clearInterval(pollTimer); }
+  var tries = 0;
+  pollTimer = setInterval(function(){
+    tries++;
+    if (tries > 14) {
+      clearInterval(pollTimer); pollTimer = null;
+      el('sQueueNote').innerHTML = '<p class="sub">Sweep is taking longer than usual &mdash; refresh this page in a few minutes.</p>';
+      return;
+    }
+    fetch('meta.json?t=' + Date.now(), { cache: 'no-store' })
+      .then(function(r){ return r.json(); })
+      .then(function(m){
+        if (m.lastSweepUtc && m.lastSweepUtc !== FWSWEPT) {
+          clearInterval(pollTimer); pollTimer = null;
+          try { localStorage.setItem('fwpend', JSON.stringify({ o: o, d: d, ds: ds })); } catch (e) { }
+          location.reload();
+        }
+      })
+      .catch(function(){ });
+  }, 40000);
 }
 
 // Flexible dates: rank the next 10 days of this route from local lows to
@@ -834,6 +864,16 @@ document.addEventListener('DOMContentLoaded', function(){
   el('wGo').onclick = submitWatch;
   el('wEmail').addEventListener('keydown', function(e){ if (e.key === 'Enter') submitWatch(); });
   ['sFrom','sTo','sDate','sGw','sTrip','sRet'].forEach(function(i){ el(i).onchange = updLive; });
+  // resume the search that triggered a live sweep before this reload
+  try {
+    var p = localStorage.getItem('fwpend');
+    if (p) {
+      localStorage.removeItem('fwpend');
+      p = JSON.parse(p);
+      el('sFrom').value = p.o; el('sTo').value = p.d;
+      if (p.ds) { el('sDate').value = p.ds; }
+    }
+  } catch (e) { }
   updLive();
   doSearch();
 });
@@ -846,7 +886,7 @@ $formCfg = @{
     priceEntry = [string]$cfg.watchIntake.priceEntry
     fallback = [string]$cfg.watchIntake.fallbackEmail
 }
-[void]$sb.Append($searchJs.Replace('__FWDATA__', $fwJson).Replace('__FWFORM__', ($formCfg | ConvertTo-Json -Compress)))
+[void]$sb.Append($searchJs.Replace('__FWDATA__', $fwJson).Replace('__FWFORM__', ($formCfg | ConvertTo-Json -Compress)).Replace('__FWSWEPT__', [string]$meta.lastSweepUtc))
 [void]$sb.Append('</div></body></html>')
 
 $outPath = Get-FwPath 'dashboard.html'

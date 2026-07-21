@@ -10,7 +10,7 @@ param([string]$Time = '07:30')
 
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-foreach ($name in @('FareWatch daily sweep', 'FareWatch hourly watch')) {
+foreach ($name in @('FareWatch daily sweep', 'FareWatch hourly watch', 'FareWatch quick queue')) {
     try { Unregister-ScheduledTask -TaskName $name -Confirm:$false -ErrorAction Stop } catch { }
 }
 
@@ -46,6 +46,11 @@ $nextHour = $now.Date.AddHours($now.Hour + 1)
 $hourlyTrigger = New-ScheduledTaskTrigger -Once -At $nextHour `
     -RepetitionInterval (New-TimeSpan -Hours 1) -RepetitionDuration (New-TimeSpan -Days 3650)
 Register-FwTask 'FareWatch hourly watch' 'run-hourly.ps1' $hourlyTrigger 'FareWatch: hourly GoWild price check for watched routes + alerts'
+
+# quick queue: every 2 minutes, sweeps website searches the moment they land
+$quickTrigger = New-ScheduledTaskTrigger -Once -At ($now.AddMinutes(2)) `
+    -RepetitionInterval (New-TimeSpan -Minutes 2) -RepetitionDuration (New-TimeSpan -Days 3650)
+Register-FwTask 'FareWatch quick queue' 'quick-check.ps1' $quickTrigger 'FareWatch: near-instant sweep of routes searched on the website'
 
 Write-Output ('Registered: "FareWatch daily sweep" daily at {0}, and "FareWatch hourly watch" every hour on the hour starting {1}.' -f $Time, $nextHour.ToString('HH:mm'))
 Write-Output 'Remove with: Unregister-ScheduledTask -TaskName "FareWatch daily sweep","FareWatch hourly watch"'
