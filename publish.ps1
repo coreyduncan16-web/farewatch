@@ -55,6 +55,14 @@ if (Test-Path $backoffPath) {
     $age = (Get-Date) - (Get-Item $backoffPath).LastWriteTime
     if ($age.TotalMinutes -lt 20) { $inBackoff = $true }
 }
+# Hard manual pause: while data\netlify-pause.txt exists and is < 6h old, skip
+# ALL Netlify deploys (GitHub mirror still updates). Lets the per-site deploy
+# throttle fully drain without any request resetting its window.
+$pausePath = Join-Path $root 'data\netlify-pause.txt'
+if (Test-Path $pausePath) {
+    if (((Get-Date) - (Get-Item $pausePath).LastWriteTime).TotalHours -lt 6) { $inBackoff = $true }
+    else { Remove-Item $pausePath -Force -ErrorAction SilentlyContinue }
+}
 if ($inBackoff) {
     Write-Output 'publish: Netlify rate-limit backoff active - skipping this round (GitHub mirror still updated; next run retries).'
 } elseif ($nToken -and $nSite) {
