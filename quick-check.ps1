@@ -29,15 +29,12 @@ try {
     # refresh the page from the updated database
     & (Join-Path $root 'render.ps1') | Out-Null
 
-    # publish on a search, or at most ~every 20 min otherwise
-    $pubMarker = Get-FwPath 'data\last-publish.txt'
-    $due = $true
-    if (Test-Path $pubMarker) {
-        $due = ((Get-Date) - (Get-Item $pubMarker).LastWriteTime).TotalMinutes -ge 20
-    }
-    if ($hasRecheck -or $due) {
-        & (Join-Path $root 'publish.ps1') -Message ('live update ' + (Get-Date -Format 'yyyy-MM-dd HH:mm')) | Out-Null
-        Set-Content -Path $pubMarker -Value ([string](Get-Date)) -Encoding ASCII
+    # Publish to the web ONLY when someone actually searched (rare, user-driven).
+    # Routine crawl data rides out on the hourly publish - this keeps deploy
+    # frequency well under Netlify's per-site throttle so it never penalizes.
+    if ($hasRecheck) {
+        & (Join-Path $root 'publish.ps1') -Message ('live search update ' + (Get-Date -Format 'yyyy-MM-dd HH:mm')) | Out-Null
+        Set-Content -Path (Get-FwPath 'data\last-publish.txt') -Value ([string](Get-Date)) -Encoding ASCII
     }
 } finally {
     Release-FwLock

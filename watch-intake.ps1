@@ -55,8 +55,9 @@ function Add-Watch([string]$email, [string]$route, [string]$maxRaw, [string]$dat
     $script:added++
 }
 
-# --- source 1: Netlify form submissions (watch + recheck), zero setup ---
+# --- source 1: Netlify form submissions (watch + recheck + unsub), zero setup ---
 $rechecks = New-Object System.Collections.ArrayList
+$unsubEmails = @{}
 $nToken = $secrets['NETLIFY_TOKEN']; $nSite = $secrets['NETLIFY_SITE_ID']
 if ($nToken -and $nSite) {
     try {
@@ -76,6 +77,9 @@ if ($nToken -and $nSite) {
                 if ($rt -match '^[A-Z]{3}-[A-Z]{3}$') {
                     [void]$rechecks.Add(@{ route = $rt; date = ([string]$s.data.date).Trim(); added = (Get-Date -Format 's') })
                 }
+            } elseif ($formName -eq 'unsub') {
+                $ue = ([string]$s.data.email).Trim().ToLower()
+                if ($ue -match '^[^@\s]+@[^@\s]+\.[^@\s]+$') { $unsubEmails[$ue] = $true }
             }
             # processed - delete so it is not ingested twice
             try { Invoke-RestMethod -Method Delete -Uri ('https://api.netlify.com/api/v1/submissions/{0}' -f $s.id) -Headers $auth -TimeoutSec 60 | Out-Null } catch { }
@@ -105,7 +109,22 @@ if ($csvUrl -ne '') {
     }
 }
 
-if ($added -gt 0) {
+# apply unsubscribes: drop the email from each watch's recipients; if a watch
+# has no recipients left, remove it entirely
+$removed = 0
+if ($unsubEmails.Count -gt 0) {
+    $kept = New-Object System.Collections.ArrayList
+    foreach ($w in @($list)) {
+        $newTo = @(@($w.to) | Where-Object { -not $unsubEmails.ContainsKey(([string]$_).Trim().ToLower()) })
+        if ($newTo.Count -eq 0) { $removed++; continue }
+        if ($newTo.Count -ne @($w.to).Count) { $removed++; $w.to = $newTo }
+        [void]$kept.Add($w)
+    }
+    $list = $kept
+    Write-Output ('intake: {0} unsubscribe(s) processed for {1} email(s).' -f $removed, $unsubEmails.Count)
+}
+
+if ($added -gt 0 -or $removed -gt 0) {
     Write-FwUtf8 $watchPath (@{ watches = @($list) } | ConvertTo-Json -Depth 5)
 }
 if ($rechecks.Count -gt 0) {

@@ -144,10 +144,15 @@ foreach ($w in $watches) {
 if ($queued.Keys.Count -eq 0) { Write-Output 'alerts: nothing triggered.'; return }
 
 $smtpReady = ($secrets['SMTP_HOST'] -and $secrets['SMTP_USER'] -and $secrets['SMTP_PASS'] -and $secrets['SMTP_FROM'])
+$unsubBase = 'https://frontierflight.netlify.app/unsub.html'
+if ($secrets['SITE_URL']) { $unsubBase = ([string]$secrets['SITE_URL']).TrimEnd('/') + '/unsub.html' }
 Ensure-FwDataDir
 foreach ($toKey in $queued.Keys) {
+    $unsubEmail = @($queuedTo[$toKey])[0]
+    $unsubLink = $unsubBase + '?e=' + [uri]::EscapeDataString([string]$unsubEmail)
     $body = "FareWatch GoWild alert - " + $todayStr + "`r`n`r`n" + (($queued[$toKey]) -join "`r`n") +
-        "`r`n`r`nPass inventory moves fast; a shown seat is not a hold."
+        "`r`n`r`nPass inventory moves fast; a shown seat is not a hold." +
+        "`r`n`r`n----`r`nStop these alerts (unsubscribe): " + $unsubLink
     $subject = ('FareWatch: {0} GoWild fare drop(s)' -f ($queued[$toKey].Count / 2))
     if ($Test -or -not $smtpReady) {
         $why = 'TEST MODE'

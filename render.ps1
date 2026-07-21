@@ -593,6 +593,9 @@ like for like before calling anything cheap.</p>
 <form name="recheck" method="POST" action="/" netlify hidden>
   <input name="route"><input name="date">
 </form>
+<form name="unsub" method="POST" action="/" netlify netlify-honeypot="bot-field" hidden>
+  <input name="email"><input name="bot-field">
+</form>
 '@)
 
 # embedded data + per-origin database export.
