@@ -1,23 +1,44 @@
-# FareWatch quick queue: runs every 2 minutes (hidden). If somebody searched
-# an unswept route on the website, this sweeps it NOW instead of waiting for
-# the hourly run - the visitor sees live prices in a couple of minutes.
-# Costs nothing when the queue is empty (one small Netlify API read).
+# FareWatch quick tick (runs every ~2 minutes, hidden). One lock, three jobs:
+#   1. pull new website signups/searches (watch-intake)
+#   2. if someone searched, sweep those routes' full 10-day spans NOW
+#   3. always advance the rolling network crawl by one batch
+# Renders every tick; publishes when there was a search or every ~20 min so
+# the site stays fresh without tripping Netlify's deploy rate limit.
 
 $ErrorActionPreference = 'Continue'
 $root = $PSScriptRoot
 . (Join-Path $root 'common.ps1')
 
-# pull any new website submissions into watches.json / data\recheck.json
+# intake needs no lock (just a Netlify API read + small file writes)
 & (Join-Path $root 'watch-intake.ps1') | Out-Null
 
-$rcPath = Get-FwPath 'data\recheck.json'
-if (-not (Test-Path $rcPath)) { return }   # nothing queued - stay quiet
+$hasRecheck = Test-Path (Get-FwPath 'data\recheck.json')
 
-if (-not (Get-FwLock 10)) { return }        # hourly/daily run is busy; it will handle the queue
+if (-not (Get-FwLock 10)) { return }   # hourly/daily busy; it will cover this
 try {
     Start-Transcript -Path (Join-Path $root 'data\last-quick.log') -Force | Out-Null
-    & (Join-Path $root 'sweep.ps1') -WatchOnly -MaxCalls 22
-    & (Join-Path $root 'publish.ps1') -Message ('live search sweep ' + (Get-Date -Format 'yyyy-MM-dd HH:mm'))
+
+    # searched routes first (full 10-day spans handled inside sweep -WatchOnly)
+    if ($hasRecheck) {
+        & (Join-Path $root 'sweep.ps1') -WatchOnly -NoRender
+    }
+
+    # always move the whole-network crawl forward one batch
+    & (Join-Path $root 'crawl.ps1') -NoLock
+
+    # refresh the page from the updated database
+    & (Join-Path $root 'render.ps1') | Out-Null
+
+    # publish on a search, or at most ~every 20 min otherwise
+    $pubMarker = Get-FwPath 'data\last-publish.txt'
+    $due = $true
+    if (Test-Path $pubMarker) {
+        $due = ((Get-Date) - (Get-Item $pubMarker).LastWriteTime).TotalMinutes -ge 20
+    }
+    if ($hasRecheck -or $due) {
+        & (Join-Path $root 'publish.ps1') -Message ('live update ' + (Get-Date -Format 'yyyy-MM-dd HH:mm')) | Out-Null
+        Set-Content -Path $pubMarker -Value ([string](Get-Date)) -Encoding ASCII
+    }
 } finally {
     Release-FwLock
     try { Stop-Transcript | Out-Null } catch { }

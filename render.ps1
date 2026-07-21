@@ -595,17 +595,39 @@ like for like before calling anything cheap.</p>
 </form>
 '@)
 
-# embedded data + search logic
+# embedded data + per-origin database export.
+# The whole network can grow to tens of thousands of route-dates, which is far
+# too much to embed in one page. So: embed only the primary origins for instant
+# search, and write one compact JSON file per origin (docs\db\<ORIGIN>.json)
+# that the page fetches on demand for any other airport.
+$embedOrigins = @{}
+foreach ($o in @($cfg.origins)) { $embedOrigins[[string]$o] = $true }
+
+$byOrigin = @{}
 $fwItems = New-Object System.Collections.ArrayList
 foreach ($r in @($records | Sort-Object @{ Expression = { $_.key } })) {
-    [void]$fwItems.Add(@{
+    $item = @{
         o = $r.o; d = $r.d; dep = $r.dep.ToString('yyyy-MM-dd')
         cash = [Math]::Round($r.cur, 2); g = [Math]::Round($r.g, 2)
         gc = $r.gc; fc = $r.fc; sig = $r.sig; u = $r.u
-    })
+    }
+    if (-not $byOrigin.ContainsKey($r.o)) { $byOrigin[$r.o] = New-Object System.Collections.ArrayList }
+    [void]$byOrigin[$r.o].Add($item)
+    if ($embedOrigins.ContainsKey($r.o)) { [void]$fwItems.Add($item) }
 }
 $fwJson = '[]'
 if ($fwItems.Count -gt 0) { $fwJson = ConvertTo-Json @($fwItems) -Compress -Depth 3 }
+
+# write per-origin files + an index of which origins have data.
+# Overwrite in place (never wipe the dir) so a visitor fetch can't hit a gap.
+$dbDir = Get-FwPath 'docs\db'
+if (-not (Test-Path $dbDir)) { New-Item -ItemType Directory -Path $dbDir -Force | Out-Null }
+foreach ($o in $byOrigin.Keys) {
+    $arr = @($byOrigin[$o])
+    $ojson = if ($arr.Count -eq 1) { '[' + (ConvertTo-Json $arr[0] -Compress -Depth 3) + ']' } else { ConvertTo-Json $arr -Compress -Depth 3 }
+    Write-FwUtf8 (Join-Path $dbDir ($o + '.json')) $ojson
+}
+Write-FwUtf8 (Join-Path $dbDir 'origins.json') (ConvertTo-Json @($byOrigin.Keys | Sort-Object) -Compress)
 
 $searchJs = @'
 <script>
@@ -613,7 +635,16 @@ var FW = __FWDATA__;
 var FWFORM = __FWFORM__;
 var FWSWEPT = '__FWSWEPT__';
 var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+// per-origin database loaded on demand: origin code -> array of route-dates
+var FWDB = {};
+var FWEMBED = {};   // origins already present in the embedded FW (instant)
+FW.forEach(function(r){ FWEMBED[r.o] = true; });
 function el(i){ return document.getElementById(i); }
+// every route-date we currently know for this origin (embedded + fetched file)
+function poolFor(o){
+  var base = FW.filter(function(r){ return r.o === o; });
+  return (FWDB[o] ? base.concat(FWDB[o]) : base);
+}
 function money(v){ return (v == null || v < 0) ? '&mdash;' : '$' + Number(v).toFixed(2); }
 function fmtD(ds){ var p = ds.split('-'); return encodeURIComponent(MONTHS[+p[1]-1] + ' ' + (+p[2]) + ', ' + p[0]); }
 function liveUrl(o, d, ds, ret){
@@ -772,8 +803,18 @@ function cachedRowsHtml(rows){
 function doSearch(){
   updLive();
   var o = el('sFrom').value, d = el('sTo').value, ds = el('sDate').value, gwOnly = el('sGw').checked;
+  // if this origin's full database is not embedded and not yet fetched, pull
+  // it, then re-run the search once it lands (keeps the main page small)
+  if (!FWEMBED[o] && !FWDB[o] && location.protocol !== 'file:') {
+    el('sResults').innerHTML = '<div class="empty">Loading ' + o + ' flights from the database...</div>';
+    fetch('db/' + o + '.json?t=' + Date.now(), { cache: 'no-store' })
+      .then(function(r){ return r.ok ? r.json() : []; })
+      .then(function(arr){ FWDB[o] = arr || []; doSearch(); })
+      .catch(function(){ FWDB[o] = []; doSearch(); });
+    return;
+  }
   liveFetch(o, d, ds);
-  var pairAll = FW.filter(function(r){ return r.o === o && r.d === d; });
+  var pairAll = poolFor(o).filter(function(r){ return r.d === d; });
   var pair = gwOnly ? pairAll.filter(function(r){ return r.gc > 0; }) : pairAll;
   autoQueue(o, d, ds, pairAll);
   flexPanel(o, d, pairAll);   // price ranking always shows every day, unfiltered
