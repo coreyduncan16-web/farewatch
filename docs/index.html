@@ -449,17 +449,17 @@ function submitWatch(){
       + '&body=' + encodeURIComponent('Please add me to FareWatch price alerts.\nEmail: ' + em + '\nRoute: ' + rt + '\nAlert at or under: $' + mx);
   }
 }
-// Auto-queue a fresh sweep for every search whose data is not from today.
-// Throttled per route per browser (6h) so casual clicking cannot flood the queue.
+// Auto-queue a fresh sweep when we have NO data at all for the searched
+// route. Tracked routes refresh hourly on their own; queueing only the
+// unknowns keeps us inside Netlify's 100-submissions/month form allowance.
+// Throttled to once per route per browser per 24h.
 function autoQueue(o, d, ds, pair){
   if (location.protocol === 'file:') { return; }
-  var today = isoDate(new Date());
-  var fresh = pair.some(function(r){ return r.u === today && (!ds || r.dep === ds); });
-  if (fresh) { el('sQueueNote').innerHTML = ''; return; }
+  if (pair.length > 0) { el('sQueueNote').innerHTML = ''; return; }
   var key = 'fwq_' + o + d;
   try {
     var last = +localStorage.getItem(key) || 0;
-    if (Date.now() - last < 6 * 3600 * 1000) {
+    if (Date.now() - last < 24 * 3600 * 1000) {
       el('sQueueNote').innerHTML = '<p class="sub">Fresh sweep for ' + o + ' &rarr; ' + d + ' is already queued &mdash; prices update within the hour.</p>';
       return;
     }
