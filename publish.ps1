@@ -49,7 +49,15 @@ if ($remote) {
 $secrets = Read-FwEnv
 $nToken = $secrets['NETLIFY_TOKEN']
 $nSite  = $secrets['NETLIFY_SITE_ID']
-if ($nToken -and $nSite) {
+$backoffPath = Join-Path $root 'data\netlify-backoff.txt'
+$inBackoff = $false
+if (Test-Path $backoffPath) {
+    $age = (Get-Date) - (Get-Item $backoffPath).LastWriteTime
+    if ($age.TotalMinutes -lt 20) { $inBackoff = $true }
+}
+if ($inBackoff) {
+    Write-Output 'publish: Netlify rate-limit backoff active - skipping this round (GitHub mirror still updated; next run retries).'
+} elseif ($nToken -and $nSite) {
     try {
         $auth = @{ Authorization = 'Bearer ' + $nToken }
 
@@ -94,9 +102,10 @@ if ($nToken -and $nSite) {
         } catch { }
 
         $body = @{ files = $files; functions = $functions } | ConvertTo-Json -Depth 4
-        # Netlify rate-limits deploy creation when we publish rapidly; wait and retry
+        # Netlify rate-limits deploy creation when we publish rapidly; retry
+        # once, then back off for 20 minutes so we stop feeding the limiter
         $dep = $null
-        for ($try = 1; $try -le 3; $try++) {
+        for ($try = 1; $try -le 2; $try++) {
             try {
                 $dep = Invoke-RestMethod -Method Post -Uri ('https://api.netlify.com/api/v1/sites/{0}/deploys' -f $nSite) `
                     -Headers $auth -ContentType 'application/json' -Body $body -TimeoutSec 120
@@ -104,12 +113,18 @@ if ($nToken -and $nSite) {
             } catch {
                 $code = 0
                 try { $code = [int]$_.Exception.Response.StatusCode } catch { }
-                if (($code -eq 403 -or $code -eq 429) -and $try -lt 3) {
-                    Write-Output ('publish: Netlify rate limit, waiting 75s (attempt {0}/3)...' -f $try)
-                    Start-Sleep -Seconds 75
+                if (($code -eq 403 -or $code -eq 429) -and $try -lt 2) {
+                    Write-Output 'publish: Netlify rate limit, one spaced retry in 80s...'
+                    Start-Sleep -Seconds 80
+                } elseif ($code -eq 403 -or $code -eq 429) {
+                    Set-Content -Path $backoffPath -Value ([string](Get-Date)) -Encoding ASCII
+                    Write-Output 'publish: Netlify still rate-limited - backing off 20 min (GitHub mirror stays current).'
+                    $dep = $null
+                    break
                 } else { throw }
             }
         }
+        if ($null -eq $dep) { return }
 
         foreach ($sha in @($dep.required)) {
             foreach ($entry in @($byHash[$sha])) {
@@ -136,6 +151,7 @@ if ($nToken -and $nSite) {
             $state = [string](Invoke-RestMethod -Uri ('https://api.netlify.com/api/v1/deploys/{0}' -f $dep.id) -Headers $auth -TimeoutSec 60).state
             if ($state -eq 'ready' -or $state -eq 'error') { break }
         }
+        if (Test-Path $backoffPath) { Remove-Item $backoffPath -Force -ErrorAction SilentlyContinue }
         Write-Output ('publish: Netlify deploy {0} ({1} files, {2} functions) -> {3}' -f $state, $files.Count, $functions.Count, $dep.ssl_url)
     } catch {
         $msg = $_.Exception.Message
