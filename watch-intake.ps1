@@ -61,7 +61,9 @@ $nToken = $secrets['NETLIFY_TOKEN']; $nSite = $secrets['NETLIFY_SITE_ID']
 if ($nToken -and $nSite) {
     try {
         $auth = @{ Authorization = 'Bearer ' + $nToken }
-        $subs = @(Invoke-RestMethod -Uri ('https://api.netlify.com/api/v1/sites/{0}/submissions?per_page=100' -f $nSite) -Headers $auth -TimeoutSec 60)
+        $subs = @(Invoke-RestMethod -Uri ('https://api.netlify.com/api/v1/sites/{0}/submissions' -f $nSite) -Headers $auth -TimeoutSec 60)
+        # PS 5.1 sometimes hands the JSON array back nested one level deep - flatten it
+        while ($subs.Count -eq 1 -and $subs[0] -is [System.Array]) { $subs = @($subs[0]) }
         foreach ($s in $subs) {
             $formName = [string]$s.form_name
             if ($formName -eq 'watch') {

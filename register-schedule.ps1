@@ -16,26 +16,36 @@ foreach ($name in @('FareWatch daily sweep', 'FareWatch hourly watch')) {
 
 $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -DontStopOnIdleEnd
 
-# daily full sweep
-$dailyAction = New-ScheduledTaskAction -Execute 'powershell.exe' `
-    -Argument ('-NoProfile -ExecutionPolicy Bypass -File "{0}\run-daily.ps1"' -f $root) `
-    -WorkingDirectory $root
-$dailyTrigger = New-ScheduledTaskTrigger -Daily -At $Time
-Register-ScheduledTask -TaskName 'FareWatch daily sweep' -Action $dailyAction `
-    -Trigger $dailyTrigger -Settings $settings `
-    -Description 'FareWatch: full daily fare sweep + dashboard + publish'
+# Prefer S4U (fully windowless, cannot be closed by accident) - needs admin.
+# Fall back to the normal interactive principal with a hidden window.
+$principal = $null
+try {
+    $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType S4U -RunLevel Limited
+} catch { }
 
-# hourly watch check, on the hour
+function Register-FwTask($name, $scriptFile, $trigger, $desc) {
+    $action = New-ScheduledTaskAction -Execute 'powershell.exe' `
+        -Argument ('-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "{0}\{1}"' -f $root, $scriptFile) `
+        -WorkingDirectory $root
+    try {
+        Register-ScheduledTask -TaskName $name -Action $action -Trigger $trigger `
+            -Settings $settings -Principal $principal -Description $desc -ErrorAction Stop | Out-Null
+        Write-Output ('{0}: registered windowless (S4U)' -f $name)
+    } catch {
+        Register-ScheduledTask -TaskName $name -Action $action -Trigger $trigger `
+            -Settings $settings -Description $desc | Out-Null
+        Write-Output ('{0}: registered with hidden window (run register-schedule.ps1 from an admin PowerShell for fully windowless)' -f $name)
+    }
+}
+
+$dailyTrigger = New-ScheduledTaskTrigger -Daily -At $Time
+Register-FwTask 'FareWatch daily sweep' 'run-daily.ps1' $dailyTrigger 'FareWatch: full daily fare sweep + dashboard + publish'
+
 $now = Get-Date
 $nextHour = $now.Date.AddHours($now.Hour + 1)
-$hourlyAction = New-ScheduledTaskAction -Execute 'powershell.exe' `
-    -Argument ('-NoProfile -ExecutionPolicy Bypass -File "{0}\run-hourly.ps1"' -f $root) `
-    -WorkingDirectory $root
 $hourlyTrigger = New-ScheduledTaskTrigger -Once -At $nextHour `
     -RepetitionInterval (New-TimeSpan -Hours 1) -RepetitionDuration (New-TimeSpan -Days 3650)
-Register-ScheduledTask -TaskName 'FareWatch hourly watch' -Action $hourlyAction `
-    -Trigger $hourlyTrigger -Settings $settings `
-    -Description 'FareWatch: hourly GoWild price check for watched routes + alerts'
+Register-FwTask 'FareWatch hourly watch' 'run-hourly.ps1' $hourlyTrigger 'FareWatch: hourly GoWild price check for watched routes + alerts'
 
 Write-Output ('Registered: "FareWatch daily sweep" daily at {0}, and "FareWatch hourly watch" every hour on the hour starting {1}.' -f $Time, $nextHour.ToString('HH:mm'))
 Write-Output 'Remove with: Unregister-ScheduledTask -TaskName "FareWatch daily sweep","FareWatch hourly watch"'
