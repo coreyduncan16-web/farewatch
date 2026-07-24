@@ -517,6 +517,7 @@ $searchHtml = @'
   <div id="sQueueNote"></div>
   <div id="sLiveRes"></div>
   <div id="sFlex"></div>
+  <div id="sGraph"></div>
   <div id="sResults"></div>
 </section>
 
@@ -715,22 +716,10 @@ function submitWatch(){
 // unknowns keeps us inside Netlify's 100-submissions/month form allowance.
 // Throttled to once per route per browser per 24h.
 function autoQueue(o, d, ds, pair){
-  if (location.protocol === 'file:') { return; }
-  if (pair.length > 0) { el('sQueueNote').innerHTML = ''; return; }
-  var key = 'fwq_' + o + d;
-  try {
-    var last = +localStorage.getItem(key) || 0;
-    if (Date.now() - last < 24 * 3600 * 1000) {
-      el('sQueueNote').innerHTML = '<p class="sub">Fresh sweep for ' + o + ' &rarr; ' + d + ' is already queued &mdash; prices update within the hour.</p>';
-      return;
-    }
-    localStorage.setItem(key, String(Date.now()));
-  } catch (e) { }
-  fwSubmit({ route: o + '-' + d, date: ds || '' })
-    .then(function(){
-      el('sQueueNote').innerHTML = '<p class="sub">&#9889; LIVE sweep started for ' + o + ' &rarr; ' + d + (ds ? ' on ' + ds : ' (next 10 days)') + ' &mdash; real prices usually land in 2-4 minutes. This page checks for them every 30 seconds and updates itself.</p>';
-    })
-    .catch(function(){ });
+  // Static hosting (GitHub Pages) has no sweep backend, so we never promise a
+  // fresh sweep here - the live-Frontier links rendered in the results are the
+  // guaranteed fallback for any untracked route. Just clear any stale note.
+  el('sQueueNote').innerHTML = '';
 }
 
 // Always-on freshness check, every 30 seconds: when a new sweep lands on
@@ -792,6 +781,87 @@ function flexPanel(o, d, pair){
   el('sFlex').innerHTML = h;
 }
 
+// ---- 10-day price chart (line = daily price, dashed = median, dotted = mode) ----
+function median(vals){
+  var a = vals.slice().sort(function(x, y){ return x - y; });
+  var n = a.length; if (!n) { return null; }
+  var m = Math.floor(n / 2);
+  return (n % 2) ? a[m] : (a[m - 1] + a[m]) / 2;
+}
+function modeOf(vals){
+  var freq = {}, maxN = 0, i, k;
+  for (i = 0; i < vals.length; i++) {
+    k = vals[i].toFixed(2);
+    freq[k] = (freq[k] || 0) + 1;
+    if (freq[k] > maxN) { maxN = freq[k]; }
+  }
+  if (maxN < 2) { return { val: null, n: maxN }; }   // every price distinct: no mode
+  var cand = null;
+  for (i = 0; i < vals.length; i++) {
+    if (freq[vals[i].toFixed(2)] === maxN && (cand === null || vals[i] < cand)) { cand = vals[i]; }
+  }
+  return { val: cand, n: maxN };
+}
+function tenDaySeries(pair){
+  var t0 = new Date(isoDate(new Date())).getTime();
+  var todayIso = isoDate(new Date());
+  var limIso = isoDate(new Date(Date.now() + 10 * 864e5));
+  var days = pair.filter(function(r){ return r.dep >= todayIso && r.dep <= limIso; });
+  days.sort(function(a, b){ return a.dep < b.dep ? -1 : 1; });
+  var withGw = days.filter(function(r){ return r.gc > 0 && r.g > 0; });
+  var basis = withGw.length >= 2 ? 'gw' : 'cash';
+  var pts = [];
+  days.forEach(function(r){
+    var v = basis === 'gw' ? ((r.gc > 0 && r.g > 0) ? r.g : null) : (r.cash > 0 ? r.cash : null);
+    if (v !== null) { pts.push({ dep: r.dep, v: v, off: Math.round((new Date(r.dep).getTime() - t0) / 864e5) }); }
+  });
+  return { pts: pts, basis: basis };
+}
+function drawPriceGraph(o, d, pair){
+  var box = el('sGraph'); if (!box) { return; }
+  var s = tenDaySeries(pair), pts = s.pts;
+  if (pts.length < 2) { box.innerHTML = ''; return; }   // need >=2 tracked days to chart a trend
+  var vals = pts.map(function(p){ return p.v; });
+  var med = median(vals), mo = modeOf(vals);
+  var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+  var dMin = Math.min(lo, med), dMax = Math.max(hi, med);
+  if (mo.val !== null) { dMin = Math.min(dMin, mo.val); dMax = Math.max(dMax, mo.val); }
+  var pad = (dMax - dMin) * 0.14; if (pad < 4) { pad = 4; }
+  var yMin = Math.max(0, dMin - pad), yMax = dMax + pad;
+  var best = pts[0]; pts.forEach(function(p){ if (p.v < best.v) { best = p; } });
+  var W = 680, H = 260, mL = 46, mR = 96, mT = 18, mB = 42, pw = W - mL - mR, ph = H - mT - mB;
+  function X(off){ var c = off < 0 ? 0 : (off > 10 ? 10 : off); return mL + (c / 10) * pw; }
+  function Y(v){ return mT + ph - ((v - yMin) / (yMax - yMin)) * ph; }
+  function d0(v){ return '$' + Number(v).toFixed(0); }
+  function d2(v){ return '$' + Number(v).toFixed(2); }
+  var g = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;max-width:' + W + 'px;font-family:\'IBM Plex Mono\',monospace">';
+  g += '<line x1="' + mL + '" y1="' + mT + '" x2="' + mL + '" y2="' + (mT + ph) + '" style="stroke:var(--rule)"/>';
+  g += '<line x1="' + mL + '" y1="' + (mT + ph) + '" x2="' + (mL + pw) + '" y2="' + (mT + ph) + '" style="stroke:var(--rule)"/>';
+  g += '<text x="' + (mL - 6) + '" y="' + (Y(yMax) + 4) + '" text-anchor="end" style="fill:var(--dim);font-size:10px">' + d0(yMax) + '</text>';
+  g += '<text x="' + (mL - 6) + '" y="' + (Y(yMin) + 4) + '" text-anchor="end" style="fill:var(--dim);font-size:10px">' + d0(yMin) + '</text>';
+  g += '<line x1="' + mL + '" y1="' + Y(med) + '" x2="' + (mL + pw) + '" y2="' + Y(med) + '" style="stroke:var(--ink);stroke-width:1;stroke-dasharray:6 4"/>';
+  g += '<text x="' + (mL + pw + 6) + '" y="' + (Y(med) + 4) + '" style="fill:var(--ink);font-size:10px">med ' + d2(med) + '</text>';
+  if (mo.val !== null) {
+    g += '<line x1="' + mL + '" y1="' + Y(mo.val) + '" x2="' + (mL + pw) + '" y2="' + Y(mo.val) + '" style="stroke:var(--watch);stroke-width:1;stroke-dasharray:2 3"/>';
+    g += '<text x="' + (mL + pw + 6) + '" y="' + (Y(mo.val) + 4) + '" style="fill:var(--watch);font-size:10px">mode ' + d2(mo.val) + '</text>';
+  }
+  var poly = ''; pts.forEach(function(p){ poly += X(p.off) + ',' + Y(p.v) + ' '; });
+  g += '<polyline points="' + poly + '" style="fill:none;stroke:var(--buy);stroke-width:2"/>';
+  pts.forEach(function(p){
+    var isB = (p === best), cx = X(p.off), cy = Y(p.v);
+    g += '<circle cx="' + cx + '" cy="' + cy + '" r="' + (isB ? 4.5 : 3) + '" style="fill:var(--buy)"/>';
+    g += '<text x="' + cx + '" y="' + (cy - 8) + '" text-anchor="middle" style="fill:var(--' + (isB ? 'buy' : 'dim') + ');font-size:' + (isB ? 10.5 : 9.5) + 'px' + (isB ? ';font-weight:600' : '') + '">' + d0(p.v) + '</text>';
+    g += '<text x="' + cx + '" y="' + (mT + ph + 15) + '" text-anchor="middle" style="fill:var(--dim);font-size:9px">' + p.dep.slice(5) + '</text>';
+  });
+  g += '<text x="' + X(best.off) + '" y="' + (mT + ph + 28) + '" text-anchor="middle" style="fill:var(--buy);font-size:9px;font-weight:600">&#9660; BEST</text>';
+  g += '</svg>';
+  var basisLabel = s.basis === 'gw' ? 'GoWild all-in' : 'cash fare';
+  var modeTxt = mo.val !== null ? ('dotted = mode (most common) <strong>' + d2(mo.val) + '</strong> seen ' + mo.n + '&times;') : 'no price repeats in this window (no mode)';
+  var head = '<p class="label" style="margin-top:20px">10-day price trend &mdash; ' + o + ' &rarr; ' + d + ' (' + basisLabel + ')</p>';
+  var cap = '<p class="sub">Each dot is a day&rsquo;s price; dashed = median <strong>' + d2(med) + '</strong>; ' + modeTxt + '. Dots below the lines are the cheap days &mdash; that is your window to buy.</p>';
+  box.innerHTML = head + g + cap;
+}
+
 // Float the searched departure airport to the top of the GoWild window table.
 function floatGwOrigin(o){
   var tb = document.querySelector('#gwtable tbody');
@@ -833,6 +903,7 @@ function doSearch(){
   var pair = gwOnly ? pairAll.filter(function(r){ return r.gc > 0; }) : pairAll;
   autoQueue(o, d, ds, pairAll);
   flexPanel(o, d, pairAll);   // price ranking always shows every day, unfiltered
+  drawPriceGraph(o, d, pairAll);   // 10-day price chart: daily price + median + mode
   floatGwOrigin(o);
   var rows = pair.filter(function(r){ return !ds || r.dep === ds; });
   rows.sort(function(a, b){
@@ -854,9 +925,23 @@ function doSearch(){
     if (sugg.length) {
       h += '<p class="sub">Nothing tracked for ' + o + ' &rarr; ' + d + (ds ? ' on ' + ds : '') + ' &mdash; here is the same route over the <strong>next 10 days</strong> instead:</p>' + cachedRowsHtml(sugg);
     } else {
-      h += '<div class="empty">No swept data for ' + o + ' &rarr; ' + d + ' yet'
-        + (gwOnly ? ' with pass seats (try unchecking the box)' : '')
-        + '. A fresh sweep of the next 10 days was queued automatically &mdash; check back within the hour, or open it live with the flyfrontier.com link above.</div>';
+      // Never dead-end: hand back a guaranteed, clickable live result straight
+      // into Frontier's booking search - the picked date plus the next week.
+      var quick = '';
+      if (!ds) {
+        for (var qi = 0; qi < 7; qi++) {
+          var qd = isoDate(new Date(Date.now() + qi * 864e5));
+          quick += '<a class="rowbtn" target="_blank" rel="noopener" href="' + liveUrl(o, d, qd) + '">' + qd.slice(5) + '</a> ';
+        }
+      }
+      h += '<div class="empty">'
+        + '<p>No tracked history for <strong>' + o + ' &rarr; ' + d + '</strong>'
+        + (ds ? ' on ' + ds : '') + ' yet'
+        + (gwOnly ? ' with pass seats (try unchecking &ldquo;GoWild seats only&rdquo;)' : '')
+        + ' &mdash; check it live on Frontier:</p>'
+        + '<p><a class="bookbtn" target="_blank" rel="noopener" href="' + liveUrl(o, d, ds) + '">See ' + o + ' &rarr; ' + d + ' fares on flyfrontier.com &rarr;</a></p>'
+        + (quick ? '<p class="sub">Or jump to a day: ' + quick + '</p>' : '')
+        + '</div>';
     }
   }
   el('sResults').innerHTML = h;
