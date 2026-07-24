@@ -55,47 +55,9 @@ function Add-Watch([string]$email, [string]$route, [string]$maxRaw, [string]$dat
     $script:added++
 }
 
-# --- source 1: Netlify form submissions (watch + recheck + unsub), zero setup ---
+# recheck + unsubscribe collectors (filled by the Google Form CSV source below)
 $rechecks = New-Object System.Collections.ArrayList
 $unsubEmails = @{}
-$nToken = $secrets['NETLIFY_TOKEN']; $nSite = $secrets['NETLIFY_SITE_ID']
-if ($nToken -and $nSite) {
-    try {
-        $auth = @{ Authorization = 'Bearer ' + $nToken }
-        $subs = @(Invoke-RestMethod -Uri ('https://api.netlify.com/api/v1/sites/{0}/submissions' -f $nSite) -Headers $auth -TimeoutSec 60)
-        # PS 5.1 sometimes hands the JSON array back nested one level deep - flatten it
-        while ($subs.Count -eq 1 -and $subs[0] -is [System.Array]) { $subs = @($subs[0]) }
-        foreach ($s in $subs) {
-            $formName = [string]$s.form_name
-            if ($formName -eq 'watch') {
-                $wr = ([string]$s.data.route).Trim().ToUpper()
-                if ($wr -eq 'UNSUB') {
-                    # unsubscribe routed through the registered watch form
-                    $ue = ([string]$s.data.email).Trim().ToLower()
-                    if ($ue -match '^[^@\s]+@[^@\s]+\.[^@\s]+$') { $unsubEmails[$ue] = $true }
-                } else {
-                    $df = ''; $dt = ''
-                    if ($s.data.PSObject.Properties['datefrom']) { $df = [string]$s.data.datefrom }
-                    if ($s.data.PSObject.Properties['dateto']) { $dt = [string]$s.data.dateto }
-                    Add-Watch ([string]$s.data.email) ([string]$s.data.route) ([string]$s.data.maxprice) $df $dt
-                }
-            } elseif ($formName -eq 'recheck') {
-                $rt = ([string]$s.data.route).Trim().ToUpper()
-                if ($rt -match '^[A-Z]{3}-[A-Z]{3}$') {
-                    [void]$rechecks.Add(@{ route = $rt; date = ([string]$s.data.date).Trim(); added = (Get-Date -Format 's') })
-                }
-            } elseif ($formName -eq 'unsub') {
-                $ue = ([string]$s.data.email).Trim().ToLower()
-                if ($ue -match '^[^@\s]+@[^@\s]+\.[^@\s]+$') { $unsubEmails[$ue] = $true }
-            }
-            # processed - delete so it is not ingested twice
-            try { Invoke-RestMethod -Method Delete -Uri ('https://api.netlify.com/api/v1/submissions/{0}' -f $s.id) -Headers $auth -TimeoutSec 60 | Out-Null } catch { }
-        }
-        if ($subs.Count -gt 0) { Write-Output ('intake: processed {0} website submission(s) from Netlify.' -f $subs.Count) }
-    } catch {
-        Write-Output ('intake: Netlify submissions check failed: ' + $_.Exception.Message)
-    }
-}
 
 # --- source 2: Google Form responses (unlimited free intake, no Netlify) ---
 # Published-CSV columns, in order: Timestamp, Email, Route, Max price,

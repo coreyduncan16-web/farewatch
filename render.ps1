@@ -515,7 +515,6 @@ $searchHtml = @'
     <a class="live" id="sLive" href="#" target="_blank" rel="noopener">check live on flyfrontier.com &rarr;</a>
   </div>
   <div id="sQueueNote"></div>
-  <div id="sLiveRes"></div>
   <div id="sGraph"></div>
   <div id="sFlex"></div>
   <div id="sResults"></div>
@@ -588,15 +587,6 @@ now,&quot; and confirm logged in at flyfrontier.com before you count on it.</p>
 and seat assignments, which is where Frontier makes its money. Compare
 like for like before calling anything cheap.</p>
 </footer>
-<form name="watch" method="POST" action="/" netlify netlify-honeypot="bot-field" hidden>
-  <input name="email"><input name="route"><input name="maxprice"><input name="datefrom"><input name="dateto"><input name="bot-field">
-</form>
-<form name="recheck" method="POST" action="/" netlify hidden>
-  <input name="route"><input name="date">
-</form>
-<form name="unsub" method="POST" action="/" netlify netlify-honeypot="bot-field" hidden>
-  <input name="email"><input name="bot-field">
-</form>
 '@)
 
 # embedded data + per-origin database export.
@@ -638,28 +628,18 @@ $searchJs = @'
 var FW = __FWDATA__;
 var FWFORM = __FWFORM__;
 var FWSWEPT = '__FWSWEPT__';
-// Netlify Forms endpoint. Form PROCESSING works even when deploys are throttled,
-// and works cross-origin, so the GitHub Pages mirror can submit here too.
-var FWPOST = 'https://frontierflight.netlify.app/';
-// Submit intake. Prefers the Google Form (FWFORM.action set) = unlimited free,
-// no Netlify. Falls back to Netlify Forms cross-origin during transition.
+// Optional Google Form intake (set FWFORM.action) - unlimited free, no Netlify.
+// Returns null when no form is configured, so callers fall back to a mailto link.
 // fields: { email, route, maxprice, datefrom, dateto }  (email blank = recheck)
 function fwSubmit(fields){
-  if (FWFORM.action) {
-    var fd = new FormData();
-    if (FWFORM.emailEntry) fd.append(FWFORM.emailEntry, fields.email || '');
-    if (FWFORM.routeEntry) fd.append(FWFORM.routeEntry, fields.route || '');
-    if (FWFORM.priceEntry) fd.append(FWFORM.priceEntry, fields.maxprice || '');
-    if (FWFORM.fromEntry) fd.append(FWFORM.fromEntry, fields.datefrom || '');
-    if (FWFORM.toEntry) fd.append(FWFORM.toEntry, fields.dateto || '');
-    return fetch(FWFORM.action, { method: 'POST', mode: 'no-cors', body: fd });
-  }
-  var kind = (fields.email ? 'watch' : 'recheck');
-  var params = 'form-name=' + kind + '&email=' + encodeURIComponent(fields.email || '')
-    + '&route=' + encodeURIComponent(fields.route || '') + '&maxprice=' + encodeURIComponent(fields.maxprice || '')
-    + '&datefrom=' + encodeURIComponent(fields.datefrom || '') + '&dateto=' + encodeURIComponent(fields.dateto || '')
-    + '&date=' + encodeURIComponent(fields.date || '');
-  return fetch(FWPOST, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params });
+  if (!FWFORM.action) { return null; }
+  var fd = new FormData();
+  if (FWFORM.emailEntry) fd.append(FWFORM.emailEntry, fields.email || '');
+  if (FWFORM.routeEntry) fd.append(FWFORM.routeEntry, fields.route || '');
+  if (FWFORM.priceEntry) fd.append(FWFORM.priceEntry, fields.maxprice || '');
+  if (FWFORM.fromEntry) fd.append(FWFORM.fromEntry, fields.datefrom || '');
+  if (FWFORM.toEntry) fd.append(FWFORM.toEntry, fields.dateto || '');
+  return fetch(FWFORM.action, { method: 'POST', mode: 'no-cors', body: fd });
 }
 var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 // per-origin database loaded on demand: origin code -> array of route-dates
@@ -699,22 +679,19 @@ function submitWatch(){
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { el('wMsg').textContent = 'Please enter a valid email address.'; return; }
   if (!/^([A-Z]{3}-[A-Z]{3}|ANY)$/.test(rt)) { el('wMsg').textContent = 'Route must look like MCO-PUJ (airport codes), or ANY.'; return; }
   if (df && dt && df > dt) { el('wMsg').textContent = 'Travel-from date is after travel-to date.'; return; }
-  if (FWFORM.action || location.protocol !== 'file:') {
+  var sub = fwSubmit({ email: em, route: rt, maxprice: mx, datefrom: df, dateto: dt });
+  if (sub) {
     var range = (df || dt) ? (' for travel ' + (df || 'now') + ' to ' + (dt || 'anytime')) : '';
-    fwSubmit({ email: em, route: rt, maxprice: mx, datefrom: df, dateto: dt })
-      .then(function(){ el('wMsg').textContent = 'You are on the list! ' + rt + range + ' - checked hourly; one email lands when the GoWild total is $' + mx + ' or less.'; el('wEmail').value = ''; })
-      .catch(function(){ el('wMsg').textContent = 'Signup hiccup - try again in a minute.'; });
+    sub.then(function(){ el('wMsg').textContent = 'You are on the list! ' + rt + range + ' - checked hourly; one email lands when the GoWild total is $' + mx + ' or less.'; el('wEmail').value = ''; })
+       .catch(function(){ el('wMsg').textContent = 'Signup hiccup - try again in a minute.'; });
   } else {
-    el('wMsg').textContent = 'Opening your email app - just hit send and you will be added.';
-    location.href = 'mailto:' + FWFORM.fallback
+    el('wMsg').textContent = 'Opening your email app - just hit send to finish your request.';
+    location.href = 'mailto:' + (FWFORM.fallback || '')
       + '?subject=' + encodeURIComponent('FareWatch alert request')
       + '&body=' + encodeURIComponent('Please add me to FareWatch price alerts.\nEmail: ' + em + '\nRoute: ' + rt + '\nAlert at or under: $' + mx);
   }
 }
-// Auto-queue a fresh sweep when we have NO data at all for the searched
-// route. Tracked routes refresh hourly on their own; queueing only the
-// unknowns keeps us inside Netlify's 100-submissions/month form allowance.
-// Throttled to once per route per browser per 24h.
+// No-op kept so callers don't break: clears any stale note in the search area.
 function autoQueue(o, d, ds, pair){
   // Static hosting (GitHub Pages) has no sweep backend, so we never promise a
   // fresh sweep here - the live-Frontier links rendered in the results are the
@@ -921,7 +898,6 @@ function doSearch(){
       .catch(function(){ FWDB[o] = []; doSearch(); });
     return;
   }
-  liveFetch(o, d, ds);
   var pairAll = poolFor(o).filter(function(r){ return r.d === d; });
   var pair = gwOnly ? pairAll.filter(function(r){ return r.gc > 0; }) : pairAll;
   autoQueue(o, d, ds, pairAll);
@@ -958,12 +934,11 @@ function doSearch(){
         }
       }
       h += '<div class="empty">'
-        + '<p>No tracked history for <strong>' + o + ' &rarr; ' + d + '</strong>'
-        + (ds ? ' on ' + ds : '') + ' yet'
-        + (gwOnly ? ' with pass seats (try unchecking &ldquo;GoWild seats only&rdquo;)' : '')
-        + ' &mdash; check it live on Frontier:</p>'
-        + '<p><a class="bookbtn" target="_blank" rel="noopener" href="' + liveUrl(o, d, ds) + '">See ' + o + ' &rarr; ' + d + ' fares on flyfrontier.com &rarr;</a></p>'
-        + (quick ? '<p class="sub">Or jump to a day: ' + quick + '</p>' : '')
+        + '<p class="label" style="margin:0 0 6px">Live fares &mdash; ' + o + ' &rarr; ' + d + (ds ? ' on ' + ds : '') + '</p>'
+        + '<p class="sub" style="margin:0 0 10px">Real-time prices for this route, straight from Frontier&rsquo;s booking site'
+        + (gwOnly ? ' (turn off &ldquo;GoWild seats only&rdquo; to see cash fares too)' : '') + ':</p>'
+        + '<p><a class="bookbtn" target="_blank" rel="noopener" href="' + liveUrl(o, d, ds) + '">Check ' + o + ' &rarr; ' + d + ' live on flyfrontier.com &rarr;</a></p>'
+        + (quick ? '<p class="sub">Jump to a day: ' + quick + '</p>' : '')
         + '</div>';
     }
   }
@@ -971,48 +946,7 @@ function doSearch(){
 }
 function isoDate(dt){ return dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0'); }
 function fmtT(s){ var t = new Date(s); var h = t.getHours(), m = String(t.getMinutes()).padStart(2,'0'); var ap = h >= 12 ? 'p' : 'a'; h = h % 12; if (h === 0) h = 12; return h + ':' + m + ap; }
-function liveFetch(o, d, ds){
-  if (location.protocol === 'file:') { return; }
-  var dates = ds ? [ds] : [isoDate(new Date()), isoDate(new Date(Date.now() + 864e5))];
-  el('sLiveRes').innerHTML = '<div class="empty">checking flyfrontier.com live for ' + o + ' &rarr; ' + d + '...</div>';
-  Promise.all(dates.map(function(dt){
-    return fetch('/.netlify/functions/fares?o=' + o + '&d=' + d + '&date=' + dt)
-      .then(function(r){ return r.json(); })
-      .then(function(j){ return { dt: dt, j: j }; })
-      .catch(function(){ return { dt: dt, j: null }; });
-  })).then(function(results){
-    var rows = [];
-    var failed = true;
-    results.forEach(function(res){
-      if (res.j && res.j.flights) { failed = false; res.j.flights.forEach(function(f){ f._dt = res.dt; rows.push(f); }); }
-    });
-    var blocked = results.some(function(res){ return res.j && res.j.blocked; });
-    if (failed || (blocked && !rows.length)) {
-      el('sLiveRes').innerHTML = '';
-      return;
-    }
-    if (!rows.length) {
-      el('sLiveRes').innerHTML = '<p class="sub"><strong>LIVE</strong> &mdash; checked seconds ago: no ' + o + ' &rarr; ' + d + ' flights on ' + dates.join(' or ') + ' &mdash; see other days for this route below.</p>';
-      return;
-    }
-    rows.sort(function(a, b){
-      var ag = (a.gwOn && a.gw > 0) ? a.gw : 1e9, bg = (b.gwOn && b.gw > 0) ? b.gw : 1e9;
-      return (ag - bg) || (a.cash - b.cash);
-    });
-    var h = '<p class="sub"><strong>LIVE</strong> &mdash; checked seconds ago, straight from flyfrontier.com:</p>';
-    h += '<table><thead><tr><th>Flight</th><th>Departs</th><th class="hide-sm">Stops</th><th class="hide-sm">Cash</th><th>GoWild</th><th></th></tr></thead><tbody>';
-    rows.slice(0, 20).forEach(function(f){
-      h += '<tr class="row"><td><div class="route">' + f.fn + '</div></td>'
-        + '<td class="num">' + f._dt + '<span class="delta">' + fmtT(f.dep) + ' &rarr; ' + fmtT(f.arr) + '</span></td>'
-        + '<td class="num hide-sm">' + (f.stops === 0 ? 'nonstop' : f.stops + ' stop') + '</td>'
-        + '<td class="num hide-sm">' + money(f.cash) + '</td>'
-        + '<td class="num">' + ((f.gwOn && f.gw > 0) ? '<span class="price">' + money(f.gw) + '</span><span class="delta">pass seat!</span>' : '<span class="delta">&mdash; none</span>') + '</td>'
-        + '<td><a class="bookbtn' + ((f.gwOn && f.gw > 0) ? '' : ' dim') + '" target="_blank" rel="noopener" href="' + liveUrl(o, d, f._dt) + '">BOOK &rarr;</a></td></tr>';
-    });
-    h += '</tbody></table>';
-    el('sLiveRes').innerHTML = h;
-  });
-}
+// live-fetch removed: it called a Netlify serverless function, which Frontier blocks for cloud IPs (GitHub-only setup).
 document.addEventListener('DOMContentLoaded', function(){
   el('sGo').onclick = doSearch;
   el('wGo').onclick = submitWatch;
