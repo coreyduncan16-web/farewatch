@@ -188,8 +188,8 @@ today sits inside the range this route-date has actually traded in.</p>
   </div>
   <div id="sQueueNote"></div>
   <div id="sLiveRes"></div>
-  <div id="sFlex"></div>
   <div id="sGraph"></div>
+  <div id="sFlex"></div>
   <div id="sResults"></div>
 </section>
 <section id="alertsec">
@@ -524,7 +524,7 @@ function flexPanel(o, d, pair){
   days.forEach(function(r){ if (r._v !== null && (best === null || r._v < best._v)) { best = r; } });
   var h = '<p class="sub"><strong>Flexible dates?</strong> Next 10 days of ' + o + ' &rarr; ' + d + ', ranked against this route&rsquo;s own local high/low'
     + (basis === 'cash' ? ' <em>(forecast from cash-fare softness &mdash; domestic GoWild only opens 1 day out)</em>' : '') + ':</p>';
-  h += '<table><thead><tr><th>Date</th><th>' + (basis === 'gw' ? 'GoWild' : 'Cash') + '</th><th>Vs. local range</th><th></th></tr></thead><tbody>';
+  h += '<table><thead><tr><th>Date</th><th>' + (basis === 'gw' ? 'GoWild' : 'Cash') + '</th><th>vs cheapest</th><th>Vs. local range</th><th></th></tr></thead><tbody>';
   days.forEach(function(r){
     var verdict = '<span class="delta">no data yet</span>';
     if (r._v !== null) {
@@ -537,8 +537,14 @@ function flexPanel(o, d, pair){
       verdict = '<span class="sig ' + cls + '">' + word + '</span>';
       if (best && r.dep === best.dep) { verdict += ' <span class="sig BUY">&#9733; BEST BET</span>'; }
     }
+    var overHtml = '<span class="delta">&mdash;</span>';
+    if (r._v !== null && lo > 0) {
+      var over = Math.round((r._v - lo) / lo * 100);
+      overHtml = over <= 0 ? '<span class="sig BUY">bottom $</span>' : '<span class="delta up">+' + over + '%</span>';
+    }
     h += '<tr class="row"><td class="num">' + r.dep + '</td>'
       + '<td class="num">' + (r._v !== null ? money(r._v) : '&mdash;') + '</td>'
+      + '<td class="num">' + overHtml + '</td>'
       + '<td>' + verdict + '</td>'
       + '<td><a class="rowbtn" target="_blank" rel="noopener" href="' + liveUrl(o, d, r.dep) + '">live</a></td></tr>';
   });
