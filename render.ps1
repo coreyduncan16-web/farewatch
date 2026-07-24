@@ -845,11 +845,28 @@ function drawPriceGraph(o, d, pair){
   g += '<line x1="' + mL + '" y1="' + (mT + ph) + '" x2="' + (mL + pw) + '" y2="' + (mT + ph) + '" style="stroke:var(--rule)"/>';
   g += '<text x="' + (mL - 6) + '" y="' + (Y(yMax) + 4) + '" text-anchor="end" style="fill:var(--dim);font-size:10px">' + d0(yMax) + '</text>';
   g += '<text x="' + (mL - 6) + '" y="' + (Y(yMin) + 4) + '" text-anchor="end" style="fill:var(--dim);font-size:10px">' + d0(yMin) + '</text>';
-  g += '<line x1="' + mL + '" y1="' + Y(med) + '" x2="' + (mL + pw) + '" y2="' + Y(med) + '" style="stroke:var(--ink);stroke-width:1;stroke-dasharray:6 4"/>';
-  g += '<text x="' + (mL + pw + 6) + '" y="' + (Y(med) + 4) + '" style="fill:var(--ink);font-size:10px">med ' + d2(med) + '</text>';
-  if (mo.val !== null) {
-    g += '<line x1="' + mL + '" y1="' + Y(mo.val) + '" x2="' + (mL + pw) + '" y2="' + Y(mo.val) + '" style="stroke:var(--watch);stroke-width:1;stroke-dasharray:2 3"/>';
-    g += '<text x="' + (mL + pw + 6) + '" y="' + (Y(mo.val) + 4) + '" style="fill:var(--watch);font-size:10px">mode ' + d2(mo.val) + '</text>';
+  var yMed = Y(med);
+  g += '<line x1="' + mL + '" y1="' + yMed + '" x2="' + (mL + pw) + '" y2="' + yMed + '" style="stroke:var(--ink);stroke-width:1;stroke-dasharray:6 4"/>';
+  if (mo.val === null) {
+    g += '<text x="' + (mL + pw + 6) + '" y="' + (yMed + 3) + '" style="fill:var(--ink);font-size:10px">med ' + d2(med) + '</text>';
+  } else {
+    var yMode = Y(mo.val);
+    // if the mode line sits right on the median line, nudge it a hair so both dash patterns show
+    var yModeLine = (Math.abs(yMode - yMed) < 2) ? (yMed + 3) : yMode;
+    g += '<line x1="' + mL + '" y1="' + yModeLine + '" x2="' + (mL + pw) + '" y2="' + yModeLine + '" style="stroke:var(--watch);stroke-width:1.4;stroke-dasharray:1 3"/>';
+    // separate the two right-side labels so both stay legible when med == mode (or close)
+    var GAP = 13, medLy = yMed, modeLy = yMode;
+    if (Math.abs(medLy - modeLy) < GAP) {
+      var mid = (yMed + yMode) / 2;
+      if (med >= mo.val) { medLy = mid - GAP / 2; modeLy = mid + GAP / 2; }
+      else { medLy = mid + GAP / 2; modeLy = mid - GAP / 2; }
+    }
+    var lx = mL + pw;
+    // faint leader lines connect each offset label back to its true value line
+    g += '<line x1="' + lx + '" y1="' + yMed + '" x2="' + (lx + 5) + '" y2="' + medLy + '" style="stroke:var(--ink);stroke-width:0.6;opacity:0.5"/>';
+    g += '<line x1="' + lx + '" y1="' + yModeLine + '" x2="' + (lx + 5) + '" y2="' + modeLy + '" style="stroke:var(--watch);stroke-width:0.6;opacity:0.5"/>';
+    g += '<text x="' + (lx + 6) + '" y="' + (medLy + 3) + '" style="fill:var(--ink);font-size:10px">med ' + d2(med) + '</text>';
+    g += '<text x="' + (lx + 6) + '" y="' + (modeLy + 3) + '" style="fill:var(--watch);font-size:10px">mode ' + d2(mo.val) + '</text>';
   }
   var poly = ''; pts.forEach(function(p){ poly += X(p.off) + ',' + Y(p.v) + ' '; });
   g += '<polyline points="' + poly + '" style="fill:none;stroke:var(--buy);stroke-width:2"/>';
