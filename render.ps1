@@ -847,11 +847,20 @@ function drawPriceGraph(o, d, pair){
   }
   var poly = ''; pts.forEach(function(p){ poly += X(p.off) + ',' + Y(p.v) + ' '; });
   g += '<polyline points="' + poly + '" style="fill:none;stroke:var(--buy);stroke-width:2"/>';
+  g += '<style>a{cursor:pointer} a:hover .gdot{stroke:var(--ink);stroke-width:2}</style>';
+  var DOW = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   pts.forEach(function(p){
     var isB = (p === best), cx = X(p.off), cy = Y(p.v);
-    g += '<circle cx="' + cx + '" cy="' + cy + '" r="' + (isB ? 4.5 : 3) + '" style="fill:var(--buy)"/>';
-    g += '<text x="' + cx + '" y="' + (cy - 8) + '" text-anchor="middle" style="fill:var(--' + (isB ? 'buy' : 'dim') + ');font-size:' + (isB ? 10.5 : 9.5) + 'px' + (isB ? ';font-weight:600' : '') + '">' + d0(p.v) + '</text>';
-    g += '<text x="' + cx + '" y="' + (mT + ph + 15) + '" text-anchor="middle" style="fill:var(--dim);font-size:9px">' + p.dep.slice(5) + '</text>';
+    var pp = p.dep.split('-');
+    var tip = DOW[new Date(+pp[0], +pp[1]-1, +pp[2]).getDay()] + ', ' + MONTHS[+pp[1]-1] + ' ' + (+pp[2]) + ', ' + d2(p.v) + ' - click to book on Frontier';
+    // each dot is a link to Frontier for that date; transparent hit-circle makes it easy to click/hover
+    g += '<a href="' + liveUrl(o, d, p.dep) + '" target="_blank" rel="noopener">'
+      + '<title>' + tip + '</title>'
+      + '<circle cx="' + cx + '" cy="' + cy + '" r="12" style="fill:transparent"/>'
+      + '<circle class="gdot" cx="' + cx + '" cy="' + cy + '" r="' + (isB ? 4.5 : 3) + '" style="fill:var(--buy)"/>'
+      + '</a>';
+    g += '<text x="' + cx + '" y="' + (cy - 8) + '" text-anchor="middle" style="fill:var(--' + (isB ? 'buy' : 'dim') + ');font-size:' + (isB ? 10.5 : 9.5) + 'px' + (isB ? ';font-weight:600' : '') + ';pointer-events:none">' + d0(p.v) + '</text>';
+    g += '<text x="' + cx + '" y="' + (mT + ph + 15) + '" text-anchor="middle" style="fill:var(--dim);font-size:9px;pointer-events:none">' + p.dep.slice(5) + '</text>';
   });
   g += '<text x="' + X(best.off) + '" y="' + (mT + ph + 28) + '" text-anchor="middle" style="fill:var(--buy);font-size:9px;font-weight:600">&#9660; BEST</text>';
   g += '</svg>';
